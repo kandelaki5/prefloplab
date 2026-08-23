@@ -321,6 +321,102 @@ const VS_DATA: Partial<Record<Position, VsData>> = {
       },
     },
   },
+  CO: {
+    // Facing CO's still-wider open (~27% RFI) — another notch looser again.
+    raiseCore: {
+      BTN: ["66+", "AKs", "AKo", "AQs"],
+      SB: ["QQ+", "AKs", "AKo"],
+      BB: ["QQ+", "AKs", "AKo"],
+    },
+    callCore: {
+      BTN: [
+        "77+", "A2s+", "K9s+", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s", "54s",
+      ],
+      SB: [
+        "22+", "A2s+", "K2s+", "Q5s+", "J6s+", "T6s+", "96s+", "87s", "76s", "65s", "54s",
+        "ATo+", "KTo+", "QJo",
+      ],
+      BB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T3s+", "92s+", "82s+", "72s+", "62s+", "52s+",
+        "A2o+", "K3o+", "Q5o+", "J6o+", "T6o+", "95o+",
+      ],
+    },
+    mixes: {
+      BTN: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 2 }, "AJs": { raise: 1, call: 5 },
+        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
+        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 5 },
+        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 }, "KQo": { raise: 0, call: 3 },
+        "44": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "22": { raise: 0, call: 5 },
+        "A9s": { raise: 1, call: 5 }, "A8s": { raise: 1, call: 5 }, "A7s": { raise: 1, call: 5 },
+      },
+      SB: {
+        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 3 }, "AJs": { raise: 1, call: 5 },
+        "AJo": { raise: 0, call: 5 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 5 },
+        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 5 },
+        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+      },
+      BB: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
+        "KQs": { raise: 0, call: 6 }, "44": { raise: 6, call: 0 },
+        "K3o": { raise: 0, call: 4 }, "K2o": { raise: 0, call: 3 },
+        "Q4o": { raise: 0, call: 4 }, "J5o": { raise: 0, call: 4 }, "T5o": { raise: 0, call: 4 },
+        "94o": { raise: 0, call: 4 }, "32s": { raise: 0, call: 6 },
+      },
+    },
+  },
+  BTN: {
+    // Facing BTN's very wide steal (~40% RFI) — SB and BB both defend hard.
+    raiseCore: {
+      SB: ["88+", "AKs", "AKo", "AQs", "AQo", "AJs"],
+      BB: ["77+", "AKs", "AKo", "AQs"],
+    },
+    callCore: {
+      SB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T4s+", "94s+", "84s+", "74s+", "64s+", "54s",
+        "A2o+", "K8o+", "Q8o+", "J8o+", "T8o+",
+      ],
+      BB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "92s+", "82s+", "72s+", "62s+", "52s+",
+        "42s+", "A2o+", "K4o+", "Q5o+", "J5o+", "T5o+", "94o+", "84o+", "74o+", "64o+",
+      ],
+    },
+    mixes: {
+      SB: {
+        "77": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
+        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 6 },
+        "A9o": { raise: 0, call: 5 }, "K7o": { raise: 0, call: 5 }, "Q7o": { raise: 0, call: 5 },
+      },
+      BB: {
+        "66": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
+        "KQs": { raise: 0, call: 6 }, "KQo": { raise: 0, call: 6 },
+        "K3o": { raise: 0, call: 5 }, "Q4o": { raise: 0, call: 5 }, "J4o": { raise: 0, call: 5 },
+        "T4o": { raise: 0, call: 5 }, "93o": { raise: 0, call: 4 }, "32s": { raise: 0, call: 6 },
+      },
+    },
+  },
+  SB: {
+    // BB defending the biggest single price of the hand vs SB's wide open —
+    // the widest calling range in the whole game.
+    raiseCore: {
+      BB: ["66+", "AKs", "AKo", "AQs", "AQo", "AJs"],
+    },
+    callCore: {
+      BB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "92s+", "82s+", "72s+", "63s+", "53s+", "43s",
+        "A2o+", "K2o+", "Q2o+", "J2o+", "T2o+", "93o+", "83o+", "73o+", "64o+",
+      ],
+    },
+    mixes: {
+      BB: {
+        "55": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
+        "KQs": { raise: 0, call: 6 }, "KQo": { raise: 0, call: 6 },
+        "K6o": { raise: 0, call: 3 }, "Q7o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 },
+        "T7o": { raise: 0, call: 3 }, "96o": { raise: 0, call: 3 },
+        "65o": { raise: 0, call: 3 }, "54o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 6 },
+      },
+    },
+  },
 };
 
 type SeatSets = Partial<Record<AnySeat, { raise: Set<string>; call: Set<string> }>>;
