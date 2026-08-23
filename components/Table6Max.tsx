@@ -12,7 +12,9 @@ const SEAT_OFFSETS = SEATS.map((_, i) => {
   return { dx: RADIUS_X * Math.cos(angle), dy: RADIUS_Y * Math.sin(angle) };
 });
 
-export function Table6Max({ hero }: { hero: string }) {
+/** `opener` (if given) is the seat that already raised — shown in copper,
+ *  distinct from `hero` (the seat on turn), shown in gold. */
+export function Table6Max({ hero, opener }: { hero: string; opener?: string }) {
   return (
     <div
       className="relative w-[460px] h-[280px] rounded-full mb-10 p-3 shadow-2xl"
@@ -35,7 +37,9 @@ export function Table6Max({ hero }: { hero: string }) {
             className={`absolute left-1/2 top-1/2 text-sm font-semibold tracking-wide px-4 py-2 rounded-full border transition-colors ${
               seat === hero
                 ? "bg-[#d3ac47] text-[#221703] border-[#f0d27e] shadow-[0_0_14px_rgba(211,172,71,0.55)]"
-                : "bg-black/45 text-emerald-50/80 border-white/10 backdrop-blur-sm"
+                : seat === opener
+                  ? "bg-[#b6472b] text-[#fbe6db] border-[#d9724f] shadow-[0_0_12px_rgba(182,71,43,0.5)]"
+                  : "bg-black/45 text-emerald-50/80 border-white/10 backdrop-blur-sm"
             }`}
             style={{
               transform: `translate(calc(-50% + ${SEAT_OFFSETS[i].dx}px), calc(-50% + ${SEAT_OFFSETS[i].dy}px))`,
