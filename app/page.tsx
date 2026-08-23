@@ -2,30 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ALL_HANDS, HAND_GRID, POSITIONS, comboCount, getAction, type Action, type Position } from "@/lib/ranges";
-
-/* =========================
-   CARD IMAGES
-========================= */
-function cardToImg(card: string) {
-  const clean = card.replace(" ", "");
-
-  const rankMap: Record<string, string> = {
-    A: "A",
-    K: "K",
-    Q: "Q",
-    J: "J",
-    T: "0",
-  };
-
-  const suitMap: Record<string, string> = {
-    "♠": "S",
-    "♥": "H",
-    "♦": "D",
-    "♣": "C",
-  };
-
-  return `https://deckofcardsapi.com/static/img/${rankMap[clean[0]]}${suitMap[clean[1]]}.png`;
-}
+import { PlayingCard } from "@/components/PlayingCard";
+import { Table6Max } from "@/components/Table6Max";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 
@@ -69,35 +47,6 @@ function sampleHand(): string {
 
 function color(a: Action) {
   return a === "Raise" ? "bg-green-500 text-black" : "bg-zinc-800 text-white opacity-60";
-}
-
-/* =========================
-   6-MAX TABLE
-========================= */
-function Table6Max({ hero }: { hero: string }) {
-  const seats = ["UTG", "HJ", "CO", "BTN", "SB", "BB"];
-
-  return (
-    <div className="relative w-[420px] h-[260px] bg-green-900 rounded-full border-4 border-green-700 flex items-center justify-center mb-10 shadow-2xl">
-      {seats.map((seat, i) => (
-        <div
-          key={seat}
-          className={`absolute text-xs px-2 py-1 rounded-full ${
-            seat === hero
-              ? "bg-yellow-400 text-black font-bold"
-              : "bg-black/60 text-white"
-          }`}
-          style={{
-            transform: `rotate(${i * 60}deg) translate(120px) rotate(-${i * 60}deg)`,
-          }}
-        >
-          {seat}
-        </div>
-      ))}
-
-      <div className="text-white text-sm opacity-50">Poker Table</div>
-    </div>
-  );
 }
 
 /* =========================
@@ -191,7 +140,7 @@ export default function TrainerPage() {
       {/* CARDS */}
       <div className="flex gap-3 mb-6">
         {cards.split(" ").map((c, i) => (
-          <img key={i} src={cardToImg(c)} alt={c} className="w-20 h-28 rounded-lg shadow-lg" />
+          <PlayingCard key={i} card={c} />
         ))}
       </div>
 
