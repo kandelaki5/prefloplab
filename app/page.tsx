@@ -2,30 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ALL_HANDS, HAND_GRID, POSITIONS, comboCount, getAction, type Action, type Position } from "@/lib/ranges";
-
-/* =========================
-   CARD IMAGES
-========================= */
-function cardToImg(card: string) {
-  const clean = card.replace(" ", "");
-
-  const rankMap: Record<string, string> = {
-    A: "A",
-    K: "K",
-    Q: "Q",
-    J: "J",
-    T: "0",
-  };
-
-  const suitMap: Record<string, string> = {
-    "♠": "S",
-    "♥": "H",
-    "♦": "D",
-    "♣": "C",
-  };
-
-  return `https://deckofcardsapi.com/static/img/${rankMap[clean[0]]}${suitMap[clean[1]]}.png`;
-}
+import { PlayingCard } from "@/components/PlayingCard";
+import { Table6Max } from "@/components/Table6Max";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 
@@ -72,35 +50,6 @@ function color(a: Action) {
 }
 
 /* =========================
-   6-MAX TABLE
-========================= */
-function Table6Max({ hero }: { hero: string }) {
-  const seats = ["UTG", "HJ", "CO", "BTN", "SB", "BB"];
-
-  return (
-    <div className="relative w-[420px] h-[260px] bg-green-900 rounded-full border-4 border-green-700 flex items-center justify-center mb-10 shadow-2xl">
-      {seats.map((seat, i) => (
-        <div
-          key={seat}
-          className={`absolute text-xs px-2 py-1 rounded-full ${
-            seat === hero
-              ? "bg-yellow-400 text-black font-bold"
-              : "bg-black/60 text-white"
-          }`}
-          style={{
-            transform: `rotate(${i * 60}deg) translate(120px) rotate(-${i * 60}deg)`,
-          }}
-        >
-          {seat}
-        </div>
-      ))}
-
-      <div className="text-white text-sm opacity-50">Poker Table</div>
-    </div>
-  );
-}
-
-/* =========================
    MAIN APP
 ========================= */
 export default function TrainerPage() {
@@ -117,7 +66,9 @@ export default function TrainerPage() {
   const [last, setLast] = useState<Action | null>(null);
 
   function deal() {
+    const p = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
     const h = sampleHand();
+    setPos(p);
     setHand(h);
     setCards(dealCards(h));
     setResult("");
@@ -170,28 +121,15 @@ export default function TrainerPage() {
       {/* TABLE */}
       <Table6Max hero={pos} />
 
-      {/* POSITIONS */}
-      <div className="flex gap-3 mb-8">
-        {POSITIONS.map((p) => (
-          <button
-            key={p}
-            onClick={() => {
-              setPos(p);
-              deal();
-            }}
-            className={`px-5 py-2 rounded-xl ${
-              pos === p ? "bg-white text-black" : "bg-zinc-800"
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+      {/* POSITION (dealt randomly each hand) */}
+      <div className="text-sm text-gray-400 mb-4 tracking-wide">
+        You are in <span className="text-yellow-400 font-semibold">{pos}</span>
       </div>
 
       {/* CARDS */}
       <div className="flex gap-3 mb-6">
         {cards.split(" ").map((c, i) => (
-          <img key={i} src={cardToImg(c)} alt={c} className="w-20 h-28 rounded-lg shadow-lg" />
+          <PlayingCard key={i} card={c} />
         ))}
       </div>
 
@@ -218,19 +156,25 @@ export default function TrainerPage() {
         Next Hand
       </button>
 
-      {/* RANGE GRID */}
+      {/* RANGE GRID — hidden until you act, so it can't be used as an answer key */}
       <div className="mb-10">
         <div className="text-xs text-gray-400 mb-2 text-center">
           {pos} Opening Range
         </div>
 
-        <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
-          {HAND_GRID.flat().map((h) => (
-            <div key={h} className={`text-[9px] px-1 py-1 rounded text-center ${color(getAction(pos, h))}`}>
-              {h}
-            </div>
-          ))}
-        </div>
+        {last ? (
+          <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
+            {HAND_GRID.flat().map((h) => (
+              <div key={h} className={`text-[9px] px-1 py-1 rounded text-center ${color(getAction(pos, h))}`}>
+                {h}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="max-w-[420px] h-[130px] flex items-center justify-center rounded-lg border border-dashed border-zinc-700 text-xs text-gray-500">
+            Fold or Raise to reveal
+          </div>
+        )}
       </div>
 
       {/* STATS */}
