@@ -59,8 +59,8 @@ function expandRange(tokens: string[]): Set<string> {
 // Raw range definitions (RAISE hands only — everything else folds).
 // Approx combo % noted for reference against standard 100bb RFI charts.
 const RAW_RANGES: Record<Position, string[]> = {
-  // ~17.6% combos
-  UTG: ["44+", "A2s+", "K7s+", "Q9s+", "J9s+", "T9s", "AJo+", "KJo+", "QJo"],
+  // ~17.8% combos
+  UTG: ["55+", "A2s+", "K7s+", "Q9s+", "J9s+", "T9s", "98s", "87s", "AJo+", "KJo+", "QJo"],
   // ~21.6% combos
   HJ: ["22+", "A2s+", "K5s+", "Q8s+", "J8s+", "T8s+", "98s", "87s", "ATo+", "KJo+", "QJo"],
   // ~27.3% combos
