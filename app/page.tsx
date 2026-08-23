@@ -156,19 +156,25 @@ export default function TrainerPage() {
         Next Hand
       </button>
 
-      {/* RANGE GRID */}
+      {/* RANGE GRID — hidden until you act, so it can't be used as an answer key */}
       <div className="mb-10">
         <div className="text-xs text-gray-400 mb-2 text-center">
           {pos} Opening Range
         </div>
 
-        <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
-          {HAND_GRID.flat().map((h) => (
-            <div key={h} className={`text-[9px] px-1 py-1 rounded text-center ${color(getAction(pos, h))}`}>
-              {h}
-            </div>
-          ))}
-        </div>
+        {last ? (
+          <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
+            {HAND_GRID.flat().map((h) => (
+              <div key={h} className={`text-[9px] px-1 py-1 rounded text-center ${color(getAction(pos, h))}`}>
+                {h}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="max-w-[420px] h-[130px] flex items-center justify-center rounded-lg border border-dashed border-zinc-700 text-xs text-gray-500">
+            Fold or Raise to reveal
+          </div>
+        )}
       </div>
 
       {/* STATS */}
