@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   ALL_HANDS, HAND_GRID, POSITIONS, VS_OPENERS, VS3BET_OPENERS,
   comboCount, isMixed, raiseSixths, resolveAction,
@@ -18,6 +18,15 @@ type Scenario =
   | { kind: "rfi"; hero: Position }
   | { kind: "vs"; hero: AnySeat; opener: Position }
   | { kind: "vs3bet"; hero: Position; threebettor: AnySeat };
+
+type Mode = "rfi" | "vs" | "vs3bet" | "random";
+
+const MODES: { mode: Mode; label: string; blurb: string }[] = [
+  { mode: "rfi", label: "PFR", blurb: "Unopened — Fold or Raise" },
+  { mode: "vs", label: "vs PFR", blurb: "Someone opened — Fold, Call, or Raise" },
+  { mode: "vs3bet", label: "vs 3-Bet", blurb: "You opened, got 3-bet back" },
+  { mode: "random", label: "Random", blurb: "Mix of all three" },
+];
 
 function pickTwo<T>(pool: T[]): [T, T] {
   const a = pool[Math.floor(Math.random() * pool.length)];
@@ -61,17 +70,17 @@ function rollDie(): number {
   return 1 + Math.floor(Math.random() * 6);
 }
 
-function randomScenario(): Scenario {
-  const roll = Math.random();
+function randomScenario(mode: Mode): Scenario {
+  const kind = mode === "random" ? (["rfi", "vs", "vs3bet"] as const)[Math.floor(Math.random() * 3)] : mode;
 
-  if (roll < 1 / 3 && VS3BET_OPENERS.length > 0) {
+  if (kind === "vs3bet") {
     const hero = VS3BET_OPENERS[Math.floor(Math.random() * VS3BET_OPENERS.length)];
     const threebettors = threebettorsFor(hero);
     const threebettor = threebettors[Math.floor(Math.random() * threebettors.length)];
     return { kind: "vs3bet", hero, threebettor };
   }
 
-  if (roll < 2 / 3) {
+  if (kind === "vs") {
     const opener = VS_OPENERS[Math.floor(Math.random() * VS_OPENERS.length)];
     const heroes = heroesFacing(opener);
     const hero = heroes[Math.floor(Math.random() * heroes.length)];
@@ -101,6 +110,7 @@ function cellStyle(raise: number, call: number): CSSProperties {
    MAIN APP
 ========================= */
 export default function TrainerPage() {
+  const [mode, setMode] = useState<Mode | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [hand, setHand] = useState<string | null>(null);
   const [cards, setCards] = useState("");
@@ -114,8 +124,8 @@ export default function TrainerPage() {
   const [mistakes, setMistakes] = useState<string[]>([]);
   const [last, setLast] = useState<FacingAction | null>(null);
 
-  function deal() {
-    const s = randomScenario();
+  function deal(m: Mode) {
+    const s = randomScenario(m);
     const h = s.kind === "vs3bet" ? sampleOpenedHand(s.hero) : sampleHand();
     setScenario(s);
     setHand(h);
@@ -126,13 +136,22 @@ export default function TrainerPage() {
     setLast(null);
   }
 
-  useEffect(() => {
-    // Deferred (not a direct synchronous setState-in-effect): the first
-    // deal must happen client-side only, after hydration, so the server
-    // and the client don't disagree on which random hand was dealt.
-    const id = setTimeout(deal, 0);
-    return () => clearTimeout(id);
-  }, []);
+  // No auto-deal-on-mount effect needed: the first hand is dealt from the
+  // mode-select click below, an ordinary event handler — not a render-phase
+  // effect — so there's no server/client hydration mismatch to defer around.
+  function selectMode(m: Mode) {
+    setMode(m);
+    setScore(0);
+    setTotal(0);
+    setMistakes([]);
+    deal(m);
+  }
+
+  function backToMenu() {
+    setMode(null);
+    setScenario(null);
+    setHand(null);
+  }
 
   const acc = useMemo(() => {
     if (!total) return 0;
@@ -184,7 +203,29 @@ export default function TrainerPage() {
   }
 
   function next() {
-    deal();
+    if (mode) deal(mode);
+  }
+
+  if (!mode) {
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 py-10">
+        <h1 className="text-5xl font-bold mb-2">Preflop Solver</h1>
+        <p className="text-gray-400 mb-10">Pick what you want to drill.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+          {MODES.map(({ mode: m, label, blurb }) => (
+            <button
+              key={m}
+              onClick={() => selectMode(m)}
+              className="flex flex-col items-start gap-1 px-6 py-5 rounded-xl bg-[#1c2831] border border-white/10 text-left hover:border-[#d3ac47] hover:bg-[#243040] transition-colors"
+            >
+              <span className="text-xl font-bold text-[#d3ac47]">{label}</span>
+              <span className="text-xs text-gray-400">{blurb}</span>
+            </button>
+          ))}
+        </div>
+      </main>
+    );
   }
 
   if (!hand || !scenario) return <div className="text-white">Loading...</div>;
@@ -201,7 +242,10 @@ export default function TrainerPage() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center px-6 py-10">
 
-      <h1 className="text-5xl font-bold mb-6">Preflop Solver</h1>
+      <h1 className="text-5xl font-bold mb-1">Preflop Solver</h1>
+      <button onClick={backToMenu} className="text-xs text-gray-500 hover:text-[#d3ac47] mb-6 underline underline-offset-2">
+        {MODES.find((m) => m.mode === mode)?.label} — change mode
+      </button>
 
       {/* TABLE + DICE */}
       <div className="flex items-center gap-8 mb-2">
