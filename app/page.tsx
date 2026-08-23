@@ -130,8 +130,6 @@ export default function TrainerPage() {
 
   if (!hand) return <div className="text-white">Loading...</div>;
 
-  const mixed = isMixed(pos, hand);
-
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center px-6 py-10">
 
@@ -140,7 +138,7 @@ export default function TrainerPage() {
       {/* TABLE + DICE */}
       <div className="flex items-center gap-8 mb-2">
         <Table6Max hero={pos} />
-        <Dice value={die} active={mixed} />
+        <Dice value={die} />
       </div>
 
       {/* POSITION (dealt randomly each hand) */}

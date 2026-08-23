@@ -160,9 +160,11 @@ export function isMixed(position: Position, hand: string): boolean {
 }
 
 /** The correct action for a hand at a position, given a die roll (1-6) —
- *  the roll only matters when the hand is mixed; pure hands ignore it. */
+ *  the roll only matters when the hand is mixed; pure hands ignore it.
+ *  Low rolls are the passive end (Fold), high rolls the aggressive end
+ *  (Raise): a hand with N/6 raise gets the top N faces (die > 6-N raises). */
 export function resolveAction(position: Position, hand: string, die: number): Action {
-  return die <= raiseSixths(position, hand) ? "Raise" : "Fold";
+  return die > 6 - raiseSixths(position, hand) ? "Raise" : "Fold";
 }
 
 /** Number of combos behind a given hand code (pair=6, suited=4, offsuit=12). */
