@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ALL_HANDS, HAND_GRID, POSITIONS, comboCount, getAction, type Action, type Position } from "@/lib/ranges";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { ALL_HANDS, HAND_GRID, POSITIONS, comboCount, isMixed, raiseSixths, resolveAction, type Action, type Position } from "@/lib/ranges";
 import { PlayingCard } from "@/components/PlayingCard";
 import { Table6Max } from "@/components/Table6Max";
+import { Dice } from "@/components/Dice";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 
@@ -45,8 +46,18 @@ function sampleHand(): string {
   return ALL_HANDS[0];
 }
 
-function color(a: Action) {
-  return a === "Raise" ? "bg-green-500 text-black" : "bg-zinc-800 text-white opacity-60";
+function rollDie(): number {
+  return 1 + Math.floor(Math.random() * 6);
+}
+
+const RAISE_COLOR = "#b6472b";
+const FOLD_COLOR = "#2a3742";
+
+/** Grid cell fill: a solid color for pure hands, a proportional split for
+ *  mixed ones (N/6 raise = N/6 of the cell in the raise color). */
+function cellStyle(sixths: number): CSSProperties {
+  const pct = (sixths / 6) * 100;
+  return { backgroundImage: `linear-gradient(to right, ${RAISE_COLOR} ${pct}%, ${FOLD_COLOR} ${pct}%)` };
 }
 
 /* =========================
@@ -56,6 +67,7 @@ export default function TrainerPage() {
   const [pos, setPos] = useState<Position>("UTG");
   const [hand, setHand] = useState<string | null>(null);
   const [cards, setCards] = useState("");
+  const [die, setDie] = useState(1);
 
   const [result, setResult] = useState("");
   const [exp, setExp] = useState("");
@@ -71,6 +83,7 @@ export default function TrainerPage() {
     setPos(p);
     setHand(h);
     setCards(dealCards(h));
+    setDie(rollDie());
     setResult("");
     setExp("");
     setLast(null);
@@ -92,17 +105,21 @@ export default function TrainerPage() {
   function act(a: Action) {
     if (!hand) return;
 
-    const correct = getAction(pos, hand);
+    const mixed = isMixed(pos, hand);
+    const correct = resolveAction(pos, hand, die);
     setTotal((t) => t + 1);
     setLast(a);
+
+    const sixths = raiseSixths(pos, hand);
+    const mixNote = mixed ? ` (${sixths}/6 raise, rolled ${die})` : "";
 
     if (a === correct) {
       setScore((s) => s + 1);
       setResult("✔ Optimal");
-      setExp(`${pos} ${hand}: ${correct}`);
+      setExp(`${pos} ${hand}: ${correct}${mixNote}`);
     } else {
       setResult("✘ Deviation");
-      setExp(`${pos} ${hand}: correct is ${correct}`);
+      setExp(`${pos} ${hand}: correct is ${correct}${mixNote}`);
       setMistakes((m) => [...m, `${pos} ${hand} → played ${a}, correct ${correct}`]);
     }
   }
@@ -113,17 +130,22 @@ export default function TrainerPage() {
 
   if (!hand) return <div className="text-white">Loading...</div>;
 
+  const mixed = isMixed(pos, hand);
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center px-6 py-10">
 
       <h1 className="text-5xl font-bold mb-6">Preflop Solver</h1>
 
-      {/* TABLE */}
-      <Table6Max hero={pos} />
+      {/* TABLE + DICE */}
+      <div className="flex items-center gap-8 mb-2">
+        <Table6Max hero={pos} />
+        <Dice value={die} active={mixed} />
+      </div>
 
       {/* POSITION (dealt randomly each hand) */}
       <div className="text-sm text-gray-400 mb-4 tracking-wide">
-        You are in <span className="text-yellow-400 font-semibold">{pos}</span>
+        You are in <span className="text-[#d3ac47] font-semibold">{pos}</span>
       </div>
 
       {/* CARDS */}
@@ -139,8 +161,12 @@ export default function TrainerPage() {
           <button
             key={a}
             onClick={() => act(a)}
-            className={`px-6 py-3 rounded-xl ${
-              last === a ? "bg-yellow-400 text-black" : "bg-zinc-800"
+            className={`px-6 py-3 rounded-xl font-semibold transition-colors ${
+              last === a
+                ? "bg-[#d3ac47] text-[#221703]"
+                : a === "Raise"
+                  ? "bg-[#7a2f1c] hover:bg-[#8f3a24] text-[#fbe6db]"
+                  : "bg-[#1c2831] hover:bg-[#243440] text-[#c3d3dc]"
             }`}
           >
             {a}
@@ -152,20 +178,41 @@ export default function TrainerPage() {
       {result && <div className="text-lg mb-1">{result}</div>}
       {exp && <div className="text-gray-400 text-sm mb-6">{exp}</div>}
 
-      <button onClick={next} className="bg-white text-black px-6 py-3 rounded-xl mb-8">
+      <button onClick={next} className="bg-white text-black px-6 py-3 rounded-xl mb-8 font-semibold">
         Next Hand
       </button>
 
       {/* RANGE GRID — hidden until you act, so it can't be used as an answer key */}
       <div className="mb-10">
-        <div className="text-xs text-gray-400 mb-2 text-center">
-          {pos} Opening Range
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <div className="text-xs text-gray-400">{pos} Opening Range</div>
+          <div className="flex items-center gap-3 text-[10px] text-gray-500">
+            <span className="flex items-center gap-1">
+              <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: RAISE_COLOR }} />
+              Raise
+            </span>
+            <span className="flex items-center gap-1">
+              <i
+                className="w-2.5 h-2.5 rounded-sm inline-block"
+                style={{ backgroundImage: `linear-gradient(to right, ${RAISE_COLOR} 50%, ${FOLD_COLOR} 50%)` }}
+              />
+              Mixed
+            </span>
+            <span className="flex items-center gap-1">
+              <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: FOLD_COLOR }} />
+              Fold
+            </span>
+          </div>
         </div>
 
         {last ? (
           <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
             {HAND_GRID.flat().map((h) => (
-              <div key={h} className={`text-[9px] px-1 py-1 rounded text-center ${color(getAction(pos, h))}`}>
+              <div
+                key={h}
+                className="text-[9px] px-1 py-1 rounded text-center text-[#f5ede0] font-medium"
+                style={cellStyle(raiseSixths(pos, h))}
+              >
                 {h}
               </div>
             ))}
