@@ -18,6 +18,13 @@ export type Action = "Raise" | "Fold";
 
 export const POSITIONS: Position[] = ["UTG", "HJ", "CO", "BTN", "SB"];
 
+// BB can never open (there's no one left to raise into), but it can face
+// one — so "facing an open" scenarios need a wider position type than the
+// RFI ones do.
+export type AnySeat = Position | "BB";
+export type FacingAction = "Fold" | "Call" | "Raise";
+export const SEATS: AnySeat[] = ["UTG", "HJ", "CO", "BTN", "SB", "BB"];
+
 // Ranks ordered high -> low. Index = distance from Ace.
 export const RANKS = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"] as const;
 export type Rank = (typeof RANKS)[number];
@@ -185,3 +192,127 @@ export const HAND_GRID: string[][] = RANKS.map((rowRank, i) =>
 );
 
 export const ALL_HANDS: string[] = HAND_GRID.flat();
+
+/**
+ * Facing-an-open ranges: hero acts after someone already raised. Three
+ * actions now — Fold, Call, Raise (3-bet) — each hand split in sixths the
+ * same way as the RFI ranges, cross-checked against reference charts.
+ *
+ * Only UTG as the opener is populated so far. VS_OPENERS lists which
+ * opening positions currently have data; more can be added the same way.
+ */
+export type Facing = { raise: number; call: number };
+
+const PURE_RAISE_VS_UTG: Record<AnySeat, string[]> = {
+  UTG: [],
+  HJ: ["55+", "AKs", "AKo"],
+  CO: ["66+", "AKs", "AKo", "AQs"],
+  BTN: ["QQ+", "AKs", "AKo"],
+  SB: ["QQ+", "AKs", "AKo"],
+  BB: ["QQ+", "AKs", "AKo"],
+};
+
+const PURE_CALL_VS_UTG: Record<AnySeat, string[]> = {
+  UTG: [],
+  HJ: [],
+  CO: [],
+  BTN: [
+    "77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s",
+  ],
+  SB: [
+    "22+", "A2s+", "K5s+", "Q7s+", "J8s+", "T8s+", "98s", "87s", "76s", "65s", "54s",
+    "ATo+", "KJo+", "QJo",
+  ],
+  BB: [
+    "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T5s+", "94s+", "84s+", "74s+", "64s+", "54s",
+    "A2o+", "K5o+", "Q7o+", "J8o+", "T8o+", "97o+",
+  ],
+};
+
+// Boundary hands mixed between two of {raise, call, fold}, in sixths.
+// Anything not listed is pure: from PURE_RAISE (6 raise), else PURE_CALL
+// (6 call), else 0 (pure fold).
+const VS_UTG_MIXES: Record<AnySeat, Record<string, Facing>> = {
+  UTG: {},
+  HJ: {
+    "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
+    "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
+    "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
+    "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
+    "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
+    "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
+  },
+  CO: {
+    "A9s": { raise: 2, call: 0 }, "A8s": { raise: 2, call: 0 }, "A7s": { raise: 2, call: 0 },
+    "A5s": { raise: 2, call: 0 }, "A4s": { raise: 2, call: 0 }, "A3s": { raise: 2, call: 0 },
+    "JTs": { raise: 2, call: 0 }, "QJs": { raise: 2, call: 0 }, "KQs": { raise: 2, call: 0 },
+    "98s": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 }, "76s": { raise: 2, call: 0 },
+    "65s": { raise: 2, call: 0 }, "54s": { raise: 2, call: 0 },
+    "44": { raise: 0, call: 1 }, "55": { raise: 0, call: 1 },
+  },
+  BTN: {
+    "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 0 }, "AJs": { raise: 1, call: 5 },
+    "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
+    "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+    "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 },
+    "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
+    "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 3 },
+  },
+  SB: {
+    "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
+    "AJo": { raise: 0, call: 4 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+    "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 3 },
+    "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+  },
+  BB: {
+    "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
+    "KQs": { raise: 0, call: 6 }, "K4o": { raise: 0, call: 3 }, "K3o": { raise: 0, call: 2 },
+    "Q6o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 }, "T7o": { raise: 0, call: 3 },
+    "96o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 4 }, "32s": { raise: 0, call: 4 },
+  },
+};
+
+const VS_UTG_RAISE_SETS: Record<AnySeat, Set<string>> = Object.fromEntries(
+  SEATS.map((seat) => [seat, expandRange(PURE_RAISE_VS_UTG[seat])])
+) as Record<AnySeat, Set<string>>;
+
+const VS_UTG_CALL_SETS: Record<AnySeat, Set<string>> = Object.fromEntries(
+  SEATS.map((seat) => [seat, expandRange(PURE_CALL_VS_UTG[seat])])
+) as Record<AnySeat, Set<string>>;
+
+/** Openers we currently have facing-ranges for. */
+export const VS_OPENERS: Position[] = ["UTG"];
+
+/** Seats that can face an open from `opener` (everyone who acts after them). */
+export function heroesFacing(opener: Position): AnySeat[] {
+  return SEATS.slice(SEATS.indexOf(opener) + 1);
+}
+
+/** {raise, call} in sixths for `hero` facing an open from `opener`.
+ *  Fold is whatever sixths remain (6 - raise - call). */
+export function vsOpenSixths(hero: AnySeat, opener: Position, hand: string): Facing {
+  if (opener !== "UTG") return { raise: 0, call: 0 }; // no data yet — treat as fold
+
+  const override = VS_UTG_MIXES[hero][hand];
+  if (override) return override;
+  if (VS_UTG_RAISE_SETS[hero].has(hand)) return { raise: 6, call: 0 };
+  if (VS_UTG_CALL_SETS[hero].has(hand)) return { raise: 0, call: 6 };
+  return { raise: 0, call: 0 };
+}
+
+export function isVsOpenMixed(hero: AnySeat, opener: Position, hand: string): boolean {
+  const { raise, call } = vsOpenSixths(hero, opener, hand);
+  const fold = 6 - raise - call;
+  return [raise, call, fold].filter((n) => n > 0).length > 1;
+}
+
+/** The correct action facing an open, given a die roll (1-6). Low rolls
+ *  are the passive end (Fold), then Call, then Raise at the top — same
+ *  aggression-ordered convention as the RFI resolver. */
+export function resolveVsOpenAction(hero: AnySeat, opener: Position, hand: string, die: number): FacingAction {
+  const { raise, call } = vsOpenSixths(hero, opener, hand);
+  const fold = 6 - raise - call;
+  if (die <= fold) return "Fold";
+  if (die <= fold + call) return "Call";
+  return "Raise";
+}
