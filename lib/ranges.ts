@@ -485,40 +485,115 @@ export function resolveVsOpenAction(hero: AnySeat, opener: Position, hand: strin
  * reference chart shows the rest greyed out ("N/A"), and we do the same:
  * vs3betSixths returns null for any hand outside hero's RFI range.
  */
-type Vs3betSpot = { raiseCore: string[]; callCore: string[]; mixes: Record<string, Facing> };
+// Every threebettor against a given hero shares one response shape in our
+// simplification (we don't have evidence yet that e.g. facing HJ's 3bet
+// plays differently than facing CO's) — so each hero has ONE spot, plus
+// the list of seats we currently have 3bet data for.
+type Vs3betSpot = { threebettors: AnySeat[]; raiseCore: string[]; callCore: string[]; mixes: Record<string, Facing> };
 
-const VS3BET_DATA: Partial<Record<Position, Partial<Record<AnySeat, Vs3betSpot>>>> = {
+const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
   UTG: {
-    HJ: {
-      raiseCore: ["QQ+", "AKs", "AKo"],
-      callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs", "KJo"],
-      mixes: {
-        "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-        "AQo": { raise: 0, call: 3 }, "KJo": { raise: 0, call: 4 },
-      },
+    threebettors: ["HJ", "CO", "BTN", "SB", "BB"],
+    raiseCore: ["QQ+", "AKs", "AKo"],
+    callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs", "KJo"],
+    mixes: {
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      "AQo": { raise: 0, call: 3 }, "KJo": { raise: 0, call: 4 },
+    },
+  },
+  HJ: {
+    // HJ's own opening range is wider than UTG's, so more hands are even
+    // reachable here — small pairs (part of HJ's pure 22+ open) flat for
+    // set value instead of folding outright.
+    threebettors: ["CO", "BTN", "SB", "BB"],
+    raiseCore: ["QQ+", "AKs", "AKo"],
+    callCore: [
+      "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
+      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "K5s", "K6s", "K7s", "K8s", "K9s", "Q8s", "Q9s", "J8s", "J9s", "T8s", "T9s", "98s", "87s",
+      "KJo", "ATo",
+    ],
+    mixes: {
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      "AQo": { raise: 0, call: 4 }, "KJo": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+      "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+    },
+  },
+  CO: {
+    // CO's own opening range is wider still (K2s+, Q5s+, etc. pure), so
+    // this vs-3bet chart has more "reachable" hands than HJ's.
+    threebettors: ["BTN", "SB", "BB"],
+    raiseCore: ["QQ+", "AKs", "AKo"],
+    callCore: [
+      "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
+      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "K2s+", "Q5s+", "J6s+", "T6s+", "96s+", "87s", "86s", "76s", "65s",
+      "KJo", "ATo", "KTo", "QJo",
+    ],
+    mixes: {
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      "AQo": { raise: 0, call: 5 }, "KJo": { raise: 0, call: 5 },
+      "ATo": { raise: 0, call: 4 }, "KTo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 4 },
+      "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+    },
+  },
+  BTN: {
+    // BTN's own opening range is the widest of the openers — nearly every
+    // suited hand and a lot of offsuit is pure-raise, so this chart has
+    // the fewest "never opened" cells short of SB's.
+    threebettors: ["SB", "BB"],
+    raiseCore: ["QQ+", "AKs", "AKo"],
+    callCore: [
+      "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
+      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "K2s+", "Q2s+", "J2s+", "T4s+", "93s+", "83s+", "73s+", "63s+", "54s", "53s", "43s",
+      "A7o+", "K9o+", "QTo+", "JTo",
+    ],
+    mixes: {
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      "AQo": { raise: 0, call: 5 },
+      "A7o": { raise: 0, call: 4 }, "A8o": { raise: 0, call: 4 }, "A9o": { raise: 0, call: 5 },
+      "K9o": { raise: 0, call: 4 }, "KTo": { raise: 0, call: 4 }, "KJo": { raise: 0, call: 5 },
+      "QTo": { raise: 0, call: 4 }, "QJo": { raise: 0, call: 5 }, "JTo": { raise: 0, call: 3 },
+      "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+    },
+  },
+  SB: {
+    // SB's own opening range is the widest of all (every pair, every
+    // suited hand pure-raise) — only BB can ever 3bet it.
+    threebettors: ["BB"],
+    raiseCore: ["QQ+", "AKs", "AKo"],
+    callCore: [
+      "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
+      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "K2s+", "Q2s+", "J2s+", "T4s+", "94s+", "84s+", "74s+", "64s+", "54s", "53s", "43s",
+      "A7o+", "K9o+", "QTo+", "JTo",
+    ],
+    mixes: {
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      "AQo": { raise: 0, call: 5 },
+      "A2o": { raise: 0, call: 4 }, "A3o": { raise: 0, call: 4 }, "A4o": { raise: 0, call: 4 },
+      "A5o": { raise: 0, call: 4 }, "A6o": { raise: 0, call: 4 },
+      "K7o": { raise: 0, call: 4 }, "K8o": { raise: 0, call: 4 },
+      "Q9o": { raise: 0, call: 4 }, "QTo": { raise: 0, call: 5 }, "QJo": { raise: 0, call: 5 },
+      "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
 };
 
-const VS3BET_SETS: Partial<Record<Position, Partial<Record<AnySeat, { raise: Set<string>; call: Set<string> }>>>> =
-  Object.fromEntries(
-    Object.entries(VS3BET_DATA).map(([hero, byThreebettor]) => [
-      hero,
-      Object.fromEntries(
-        Object.entries(byThreebettor!).map(([threebettor, spot]) => [
-          threebettor,
-          { raise: expandRange(spot!.raiseCore), call: expandRange(spot!.callCore) },
-        ])
-      ),
-    ])
-  );
+const VS3BET_SETS: Partial<Record<Position, { raise: Set<string>; call: Set<string> }>> = Object.fromEntries(
+  Object.entries(VS3BET_DATA).map(([hero, spot]) => [
+    hero,
+    { raise: expandRange(spot!.raiseCore), call: expandRange(spot!.callCore) },
+  ])
+);
 
 /** Openers we have facing-3bet data for. */
 export const VS3BET_OPENERS: Position[] = Object.keys(VS3BET_DATA) as Position[];
 
 /** Seats we have 3bet data for, 3-betting `hero`'s open. */
 export function threebettorsFor(hero: Position): AnySeat[] {
-  return Object.keys(VS3BET_DATA[hero] ?? {}) as AnySeat[];
+  return VS3BET_DATA[hero]?.threebettors ?? [];
 }
 
 /** {raise, call} in sixths facing a 3-bet, or null if `hand` isn't
@@ -526,9 +601,9 @@ export function threebettorsFor(hero: Position): AnySeat[] {
 export function vs3betSixths(hero: Position, threebettor: AnySeat, hand: string): Facing | null {
   if (raiseSixths(hero, hand) === 0) return null; // never opened this hand — no data
 
-  const spot = VS3BET_DATA[hero]?.[threebettor];
-  const sets = VS3BET_SETS[hero]?.[threebettor];
-  if (!spot || !sets) return { raise: 0, call: 0 }; // no 3bet data for this pair yet
+  const spot = VS3BET_DATA[hero];
+  const sets = VS3BET_SETS[hero];
+  if (!spot || !sets || !spot.threebettors.includes(threebettor)) return { raise: 0, call: 0 };
 
   const override = spot.mixes[hand];
   if (override) return override;
