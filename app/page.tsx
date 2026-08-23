@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
-  ALL_HANDS, HAND_GRID, POSITIONS, VS_OPENERS,
+  ALL_HANDS, HAND_GRID, POSITIONS, VS_OPENERS, VS3BET_OPENERS,
   comboCount, isMixed, raiseSixths, resolveAction,
   isVsOpenMixed, vsOpenSixths, resolveVsOpenAction, heroesFacing,
+  isVs3betMixed, vs3betSixths, resolveVs3betAction, threebettorsFor, sampleOpenedHand,
   type AnySeat, type FacingAction, type Position,
 } from "@/lib/ranges";
 import { PlayingCard } from "@/components/PlayingCard";
@@ -15,7 +16,8 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 
 type Scenario =
   | { kind: "rfi"; hero: Position }
-  | { kind: "vs"; hero: AnySeat; opener: Position };
+  | { kind: "vs"; hero: AnySeat; opener: Position }
+  | { kind: "vs3bet"; hero: Position; threebettor: AnySeat };
 
 function pickTwo<T>(pool: T[]): [T, T] {
   const a = pool[Math.floor(Math.random() * pool.length)];
@@ -60,12 +62,22 @@ function rollDie(): number {
 }
 
 function randomScenario(): Scenario {
-  if (Math.random() < 0.5) {
+  const roll = Math.random();
+
+  if (roll < 1 / 3 && VS3BET_OPENERS.length > 0) {
+    const hero = VS3BET_OPENERS[Math.floor(Math.random() * VS3BET_OPENERS.length)];
+    const threebettors = threebettorsFor(hero);
+    const threebettor = threebettors[Math.floor(Math.random() * threebettors.length)];
+    return { kind: "vs3bet", hero, threebettor };
+  }
+
+  if (roll < 2 / 3) {
     const opener = VS_OPENERS[Math.floor(Math.random() * VS_OPENERS.length)];
     const heroes = heroesFacing(opener);
     const hero = heroes[Math.floor(Math.random() * heroes.length)];
     return { kind: "vs", hero, opener };
   }
+
   const hero = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
   return { kind: "rfi", hero };
 }
@@ -73,6 +85,7 @@ function randomScenario(): Scenario {
 const RAISE_COLOR = "#b6472b";
 const CALL_COLOR = "#3f8a4c";
 const FOLD_COLOR = "#2a3742";
+const NA_COLOR = "#2b2b2b";
 
 /** Grid cell fill: a solid color for pure hands, a proportional 3-way
  *  split for mixed ones (raise | call | fold, left to right). */
@@ -103,7 +116,7 @@ export default function TrainerPage() {
 
   function deal() {
     const s = randomScenario();
-    const h = sampleHand();
+    const h = s.kind === "vs3bet" ? sampleOpenedHand(s.hero) : sampleHand();
     setScenario(s);
     setHand(h);
     setCards(dealCards(h));
@@ -126,23 +139,37 @@ export default function TrainerPage() {
     return Math.round((score / total) * 100);
   }, [score, total]);
 
-  function sixthsFor(h: string): { raise: number; call: number } {
+  function sixthsFor(h: string): { raise: number; call: number } | null {
     if (!scenario) return { raise: 0, call: 0 };
     if (scenario.kind === "rfi") return { raise: raiseSixths(scenario.hero, h), call: 0 };
-    return vsOpenSixths(scenario.hero, scenario.opener, h);
+    if (scenario.kind === "vs") return vsOpenSixths(scenario.hero, scenario.opener, h);
+    return vs3betSixths(scenario.hero, scenario.threebettor, h);
   }
 
   function act(a: FacingAction) {
     if (!hand || !scenario) return;
 
-    const correct: FacingAction =
-      scenario.kind === "rfi" ? resolveAction(scenario.hero, hand, die) : resolveVsOpenAction(scenario.hero, scenario.opener, hand, die);
-    const mixed = scenario.kind === "rfi" ? isMixed(scenario.hero, hand) : isVsOpenMixed(scenario.hero, scenario.opener, hand);
+    let correct: FacingAction;
+    let mixed: boolean;
+    let label: string;
+
+    if (scenario.kind === "rfi") {
+      correct = resolveAction(scenario.hero, hand, die);
+      mixed = isMixed(scenario.hero, hand);
+      label = scenario.hero;
+    } else if (scenario.kind === "vs") {
+      correct = resolveVsOpenAction(scenario.hero, scenario.opener, hand, die);
+      mixed = isVsOpenMixed(scenario.hero, scenario.opener, hand);
+      label = `${scenario.opener} raise → ${scenario.hero}`;
+    } else {
+      correct = resolveVs3betAction(scenario.hero, scenario.threebettor, hand, die);
+      mixed = isVs3betMixed(scenario.hero, scenario.threebettor, hand);
+      label = `${scenario.hero} opens, ${scenario.threebettor} 3-bets`;
+    }
 
     setTotal((t) => t + 1);
     setLast(a);
 
-    const label = scenario.kind === "rfi" ? scenario.hero : `${scenario.opener} raise → ${scenario.hero}`;
     const mixNote = mixed ? ` (rolled ${die})` : "";
 
     if (a === correct) {
@@ -162,7 +189,7 @@ export default function TrainerPage() {
 
   if (!hand || !scenario) return <div className="text-white">Loading...</div>;
 
-  const buttons: FacingAction[] = scenario.kind === "vs" ? ["Fold", "Call", "Raise"] : ["Fold", "Raise"];
+  const buttons: FacingAction[] = scenario.kind === "rfi" ? ["Fold", "Raise"] : ["Fold", "Call", "Raise"];
 
   const buttonClass = (a: FacingAction) => {
     if (last === a) return "bg-[#d3ac47] text-[#221703]";
@@ -178,18 +205,28 @@ export default function TrainerPage() {
 
       {/* TABLE + DICE */}
       <div className="flex items-center gap-8 mb-2">
-        <Table6Max hero={scenario.hero} opener={scenario.kind === "vs" ? scenario.opener : undefined} />
+        <Table6Max
+          hero={scenario.hero}
+          opener={scenario.kind === "vs" ? scenario.opener : scenario.kind === "vs3bet" ? scenario.threebettor : undefined}
+        />
         <Dice value={die} />
       </div>
 
       {/* CONTEXT */}
       <div className="text-sm text-gray-400 mb-4 tracking-wide text-center">
-        {scenario.kind === "vs" ? (
+        {scenario.kind === "vs" && (
           <>
             <span className="text-[#b6472b] font-semibold">{scenario.opener}</span> raises. You are in{" "}
             <span className="text-[#d3ac47] font-semibold">{scenario.hero}</span>.
           </>
-        ) : (
+        )}
+        {scenario.kind === "vs3bet" && (
+          <>
+            You open <span className="text-[#d3ac47] font-semibold">{scenario.hero}</span>,{" "}
+            <span className="text-[#b6472b] font-semibold">{scenario.threebettor}</span> 3-bets.
+          </>
+        )}
+        {scenario.kind === "rfi" && (
           <>
             You are in <span className="text-[#d3ac47] font-semibold">{scenario.hero}</span>, unopened.
           </>
@@ -228,14 +265,16 @@ export default function TrainerPage() {
       <div className="mb-10">
         <div className="flex items-center justify-center gap-4 mb-2 flex-wrap">
           <div className="text-xs text-gray-400">
-            {scenario.kind === "vs" ? `${scenario.hero} vs ${scenario.opener} raise` : `${scenario.hero} Opening Range`}
+            {scenario.kind === "vs" && `${scenario.hero} vs ${scenario.opener} raise`}
+            {scenario.kind === "vs3bet" && `${scenario.hero} vs ${scenario.threebettor} 3-bet`}
+            {scenario.kind === "rfi" && `${scenario.hero} Opening Range`}
           </div>
           <div className="flex items-center gap-3 text-[10px] text-gray-500">
             <span className="flex items-center gap-1">
               <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: RAISE_COLOR }} />
               Raise
             </span>
-            {scenario.kind === "vs" && (
+            {scenario.kind !== "rfi" && (
               <span className="flex items-center gap-1">
                 <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CALL_COLOR }} />
                 Call
@@ -245,18 +284,35 @@ export default function TrainerPage() {
               <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: FOLD_COLOR }} />
               Fold
             </span>
+            {scenario.kind === "vs3bet" && (
+              <span className="flex items-center gap-1">
+                <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: NA_COLOR }} />
+                Never opened
+              </span>
+            )}
           </div>
         </div>
 
         {last ? (
           <div className="grid grid-cols-13 gap-[2px] max-w-[420px]">
             {HAND_GRID.flat().map((h) => {
-              const { raise, call } = sixthsFor(h);
+              const sixths = sixthsFor(h);
+              if (!sixths) {
+                return (
+                  <div
+                    key={h}
+                    className="text-[9px] px-1 py-1 rounded text-center text-zinc-600 font-medium"
+                    style={{ background: NA_COLOR }}
+                  >
+                    {h}
+                  </div>
+                );
+              }
               return (
                 <div
                   key={h}
                   className="text-[9px] px-1 py-1 rounded text-center text-[#f5ede0] font-medium"
-                  style={cellStyle(raise, call)}
+                  style={cellStyle(sixths.raise, sixths.call)}
                 >
                   {h}
                 </div>

@@ -474,3 +474,96 @@ export function resolveVsOpenAction(hero: AnySeat, opener: Position, hand: strin
   if (die <= fold + call) return "Call";
   return "Raise";
 }
+
+/**
+ * Facing-a-3bet ranges: hero already opened, someone behind them 3-bet,
+ * action is back on hero. Fold / Call / Raise (4-bet) again in sixths —
+ * "Raise" here folds together the chart's separate Raise and Allin
+ * buttons, since our engine doesn't model bet sizes.
+ *
+ * Only hands hero could actually have opened are reachable here — the
+ * reference chart shows the rest greyed out ("N/A"), and we do the same:
+ * vs3betSixths returns null for any hand outside hero's RFI range.
+ */
+type Vs3betSpot = { raiseCore: string[]; callCore: string[]; mixes: Record<string, Facing> };
+
+const VS3BET_DATA: Partial<Record<Position, Partial<Record<AnySeat, Vs3betSpot>>>> = {
+  UTG: {
+    HJ: {
+      raiseCore: ["QQ+", "AKs", "AKo"],
+      callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs", "KJo"],
+      mixes: {
+        "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+        "AQo": { raise: 0, call: 3 }, "KJo": { raise: 0, call: 4 },
+      },
+    },
+  },
+};
+
+const VS3BET_SETS: Partial<Record<Position, Partial<Record<AnySeat, { raise: Set<string>; call: Set<string> }>>>> =
+  Object.fromEntries(
+    Object.entries(VS3BET_DATA).map(([hero, byThreebettor]) => [
+      hero,
+      Object.fromEntries(
+        Object.entries(byThreebettor!).map(([threebettor, spot]) => [
+          threebettor,
+          { raise: expandRange(spot!.raiseCore), call: expandRange(spot!.callCore) },
+        ])
+      ),
+    ])
+  );
+
+/** Openers we have facing-3bet data for. */
+export const VS3BET_OPENERS: Position[] = Object.keys(VS3BET_DATA) as Position[];
+
+/** Seats we have 3bet data for, 3-betting `hero`'s open. */
+export function threebettorsFor(hero: Position): AnySeat[] {
+  return Object.keys(VS3BET_DATA[hero] ?? {}) as AnySeat[];
+}
+
+/** {raise, call} in sixths facing a 3-bet, or null if `hand` isn't
+ *  something `hero` would have opened in the first place. */
+export function vs3betSixths(hero: Position, threebettor: AnySeat, hand: string): Facing | null {
+  if (raiseSixths(hero, hand) === 0) return null; // never opened this hand — no data
+
+  const spot = VS3BET_DATA[hero]?.[threebettor];
+  const sets = VS3BET_SETS[hero]?.[threebettor];
+  if (!spot || !sets) return { raise: 0, call: 0 }; // no 3bet data for this pair yet
+
+  const override = spot.mixes[hand];
+  if (override) return override;
+  if (sets.raise.has(hand)) return { raise: 6, call: 0 };
+  if (sets.call.has(hand)) return { raise: 0, call: 6 };
+  return { raise: 0, call: 0 };
+}
+
+export function isVs3betMixed(hero: Position, threebettor: AnySeat, hand: string): boolean {
+  const f = vs3betSixths(hero, threebettor, hand);
+  if (!f) return false;
+  const fold = 6 - f.raise - f.call;
+  return [f.raise, f.call, fold].filter((n) => n > 0).length > 1;
+}
+
+/** Same low-passive/high-aggressive die convention as the other resolvers. */
+export function resolveVs3betAction(hero: Position, threebettor: AnySeat, hand: string, die: number): FacingAction {
+  const f = vs3betSixths(hero, threebettor, hand) ?? { raise: 0, call: 0 };
+  const fold = 6 - f.raise - f.call;
+  if (die <= fold) return "Fold";
+  if (die <= fold + f.call) return "Call";
+  return "Raise";
+}
+
+/** A hand hero would actually have opened, weighted by how often they'd
+ *  open it (combo count x raise frequency) — for dealing realistic
+ *  facing-3bet scenarios. */
+export function sampleOpenedHand(hero: Position): string {
+  const weight = (h: string) => comboCount(h) * (raiseSixths(hero, h) / 6);
+  const total = ALL_HANDS.reduce((sum, h) => sum + weight(h), 0);
+  let r = Math.random() * total;
+
+  for (const h of ALL_HANDS) {
+    r -= weight(h);
+    if (r <= 0) return h;
+  }
+  return ALL_HANDS.find((h) => raiseSixths(hero, h) > 0) ?? ALL_HANDS[0];
+}
