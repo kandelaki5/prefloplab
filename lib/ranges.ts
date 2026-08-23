@@ -198,90 +198,150 @@ export const ALL_HANDS: string[] = HAND_GRID.flat();
  * actions now — Fold, Call, Raise (3-bet) — each hand split in sixths the
  * same way as the RFI ranges, cross-checked against reference charts.
  *
- * Only UTG as the opener is populated so far. VS_OPENERS lists which
- * opening positions currently have data; more can be added the same way.
+ * Keyed by opener first, then by hero seat. VS_OPENERS lists which opening
+ * positions currently have data; more slot in the same way.
  */
 export type Facing = { raise: number; call: number };
 
-const PURE_RAISE_VS_UTG: Record<AnySeat, string[]> = {
-  UTG: [],
-  HJ: ["55+", "AKs", "AKo"],
-  CO: ["66+", "AKs", "AKo", "AQs"],
-  BTN: ["QQ+", "AKs", "AKo"],
-  SB: ["QQ+", "AKs", "AKo"],
-  BB: ["QQ+", "AKs", "AKo"],
+type VsData = {
+  raiseCore: Partial<Record<AnySeat, string[]>>;
+  callCore: Partial<Record<AnySeat, string[]>>;
+  mixes: Partial<Record<AnySeat, Record<string, Facing>>>;
 };
 
-const PURE_CALL_VS_UTG: Record<AnySeat, string[]> = {
-  UTG: [],
-  HJ: [],
-  CO: [],
-  BTN: [
-    "77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s",
-  ],
-  SB: [
-    "22+", "A2s+", "K5s+", "Q7s+", "J8s+", "T8s+", "98s", "87s", "76s", "65s", "54s",
-    "ATo+", "KJo+", "QJo",
-  ],
-  BB: [
-    "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T5s+", "94s+", "84s+", "74s+", "64s+", "54s",
-    "A2o+", "K5o+", "Q7o+", "J8o+", "T8o+", "97o+",
-  ],
-};
-
-// Boundary hands mixed between two of {raise, call, fold}, in sixths.
-// Anything not listed is pure: from PURE_RAISE (6 raise), else PURE_CALL
-// (6 call), else 0 (pure fold).
-const VS_UTG_MIXES: Record<AnySeat, Record<string, Facing>> = {
-  UTG: {},
+const VS_DATA: Partial<Record<Position, VsData>> = {
+  UTG: {
+    raiseCore: {
+      HJ: ["55+", "AKs", "AKo"],
+      CO: ["66+", "AKs", "AKo", "AQs"],
+      BTN: ["QQ+", "AKs", "AKo"],
+      SB: ["QQ+", "AKs", "AKo"],
+      BB: ["QQ+", "AKs", "AKo"],
+    },
+    callCore: {
+      BTN: ["77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s"],
+      SB: [
+        "22+", "A2s+", "K5s+", "Q7s+", "J8s+", "T8s+", "98s", "87s", "76s", "65s", "54s",
+        "ATo+", "KJo+", "QJo",
+      ],
+      BB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T5s+", "94s+", "84s+", "74s+", "64s+", "54s",
+        "A2o+", "K5o+", "Q7o+", "J8o+", "T8o+", "97o+",
+      ],
+    },
+    mixes: {
+      HJ: {
+        "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
+        "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
+        "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
+        "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
+        "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
+        "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
+      },
+      CO: {
+        "A9s": { raise: 2, call: 0 }, "A8s": { raise: 2, call: 0 }, "A7s": { raise: 2, call: 0 },
+        "A5s": { raise: 2, call: 0 }, "A4s": { raise: 2, call: 0 }, "A3s": { raise: 2, call: 0 },
+        "JTs": { raise: 2, call: 0 }, "QJs": { raise: 2, call: 0 }, "KQs": { raise: 2, call: 0 },
+        "98s": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 }, "76s": { raise: 2, call: 0 },
+        "65s": { raise: 2, call: 0 }, "54s": { raise: 2, call: 0 },
+        "44": { raise: 0, call: 1 }, "55": { raise: 0, call: 1 },
+      },
+      BTN: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 0 }, "AJs": { raise: 1, call: 5 },
+        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
+        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 },
+        "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
+        "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 3 },
+      },
+      SB: {
+        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
+        "AJo": { raise: 0, call: 4 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 3 },
+        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+      },
+      BB: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
+        "KQs": { raise: 0, call: 6 }, "K4o": { raise: 0, call: 3 }, "K3o": { raise: 0, call: 2 },
+        "Q6o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 }, "T7o": { raise: 0, call: 3 },
+        "96o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 4 }, "32s": { raise: 0, call: 4 },
+      },
+    },
+  },
   HJ: {
-    "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
-    "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
-    "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
-    "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
-    "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
-    "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
-  },
-  CO: {
-    "A9s": { raise: 2, call: 0 }, "A8s": { raise: 2, call: 0 }, "A7s": { raise: 2, call: 0 },
-    "A5s": { raise: 2, call: 0 }, "A4s": { raise: 2, call: 0 }, "A3s": { raise: 2, call: 0 },
-    "JTs": { raise: 2, call: 0 }, "QJs": { raise: 2, call: 0 }, "KQs": { raise: 2, call: 0 },
-    "98s": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 }, "76s": { raise: 2, call: 0 },
-    "65s": { raise: 2, call: 0 }, "54s": { raise: 2, call: 0 },
-    "44": { raise: 0, call: 1 }, "55": { raise: 0, call: 1 },
-  },
-  BTN: {
-    "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 0 }, "AJs": { raise: 1, call: 5 },
-    "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
-    "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
-    "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 },
-    "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
-    "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 3 },
-  },
-  SB: {
-    "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
-    "AJo": { raise: 0, call: 4 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
-    "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 3 },
-    "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
-  },
-  BB: {
-    "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
-    "KQs": { raise: 0, call: 6 }, "K4o": { raise: 0, call: 3 }, "K3o": { raise: 0, call: 2 },
-    "Q6o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 }, "T7o": { raise: 0, call: 3 },
-    "96o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 4 }, "32s": { raise: 0, call: 4 },
+    // Facing HJ's (wider, weaker) open, everyone plays a notch looser than
+    // the equivalent seat would facing a UTG open.
+    raiseCore: {
+      CO: ["55+", "AKs", "AKo"],
+      BTN: ["66+", "AKs", "AKo", "AQs"],
+      SB: ["QQ+", "AKs", "AKo"],
+      BB: ["QQ+", "AKs", "AKo"],
+    },
+    callCore: {
+      BTN: [
+        "77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s", "54s",
+      ],
+      SB: [
+        "22+", "A2s+", "K4s+", "Q6s+", "J7s+", "T7s+", "97s+", "87s", "76s", "65s", "54s",
+        "ATo+", "KTo+", "QJo",
+      ],
+      BB: [
+        "22+", "A2s+", "K2s+", "Q2s+", "J3s+", "T4s+", "93s+", "83s+", "73s+", "63s+", "53s+",
+        "A2o+", "K4o+", "Q6o+", "J7o+", "T7o+", "96o+",
+      ],
+    },
+    mixes: {
+      CO: {
+        "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
+        "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
+        "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
+        "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
+        "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
+        "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
+      },
+      BTN: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
+        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
+        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 4 },
+        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 }, "KQo": { raise: 0, call: 2 },
+        "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
+        "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 4 },
+      },
+      SB: {
+        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 2 }, "AJs": { raise: 1, call: 5 },
+        "AJo": { raise: 0, call: 5 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 4 },
+        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 4 },
+        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
+      },
+      BB: {
+        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
+        "KQs": { raise: 0, call: 6 }, "K3o": { raise: 0, call: 3 }, "K2o": { raise: 0, call: 2 },
+        "Q5o": { raise: 0, call: 3 }, "J6o": { raise: 0, call: 3 }, "T6o": { raise: 0, call: 3 },
+        "95o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 5 }, "32s": { raise: 0, call: 5 },
+      },
+    },
   },
 };
 
-const VS_UTG_RAISE_SETS: Record<AnySeat, Set<string>> = Object.fromEntries(
-  SEATS.map((seat) => [seat, expandRange(PURE_RAISE_VS_UTG[seat])])
-) as Record<AnySeat, Set<string>>;
+type SeatSets = Partial<Record<AnySeat, { raise: Set<string>; call: Set<string> }>>;
 
-const VS_UTG_CALL_SETS: Record<AnySeat, Set<string>> = Object.fromEntries(
-  SEATS.map((seat) => [seat, expandRange(PURE_CALL_VS_UTG[seat])])
-) as Record<AnySeat, Set<string>>;
+const VS_SETS: Partial<Record<Position, SeatSets>> = Object.fromEntries(
+  Object.entries(VS_DATA).map(([opener, data]) => [
+    opener,
+    Object.fromEntries(
+      SEATS.map((seat) => [
+        seat,
+        {
+          raise: expandRange(data!.raiseCore[seat] ?? []),
+          call: expandRange(data!.callCore[seat] ?? []),
+        },
+      ])
+    ),
+  ])
+);
 
 /** Openers we currently have facing-ranges for. */
-export const VS_OPENERS: Position[] = ["UTG"];
+export const VS_OPENERS: Position[] = Object.keys(VS_DATA) as Position[];
 
 /** Seats that can face an open from `opener` (everyone who acts after them). */
 export function heroesFacing(opener: Position): AnySeat[] {
@@ -291,12 +351,14 @@ export function heroesFacing(opener: Position): AnySeat[] {
 /** {raise, call} in sixths for `hero` facing an open from `opener`.
  *  Fold is whatever sixths remain (6 - raise - call). */
 export function vsOpenSixths(hero: AnySeat, opener: Position, hand: string): Facing {
-  if (opener !== "UTG") return { raise: 0, call: 0 }; // no data yet — treat as fold
+  const data = VS_DATA[opener];
+  const sets = VS_SETS[opener]?.[hero];
+  if (!data || !sets) return { raise: 0, call: 0 }; // no data for this opener yet
 
-  const override = VS_UTG_MIXES[hero][hand];
+  const override = data.mixes[hero]?.[hand];
   if (override) return override;
-  if (VS_UTG_RAISE_SETS[hero].has(hand)) return { raise: 6, call: 0 };
-  if (VS_UTG_CALL_SETS[hero].has(hand)) return { raise: 0, call: 6 };
+  if (sets.raise.has(hand)) return { raise: 6, call: 0 };
+  if (sets.call.has(hand)) return { raise: 0, call: 6 };
   return { raise: 0, call: 0 };
 }
 
