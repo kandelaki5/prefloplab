@@ -66,7 +66,9 @@ export default function TrainerPage() {
   const [last, setLast] = useState<Action | null>(null);
 
   function deal() {
+    const p = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
     const h = sampleHand();
+    setPos(p);
     setHand(h);
     setCards(dealCards(h));
     setResult("");
@@ -119,22 +121,9 @@ export default function TrainerPage() {
       {/* TABLE */}
       <Table6Max hero={pos} />
 
-      {/* POSITIONS */}
-      <div className="flex gap-3 mb-8">
-        {POSITIONS.map((p) => (
-          <button
-            key={p}
-            onClick={() => {
-              setPos(p);
-              deal();
-            }}
-            className={`px-5 py-2 rounded-xl ${
-              pos === p ? "bg-white text-black" : "bg-zinc-800"
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+      {/* POSITION (dealt randomly each hand) */}
+      <div className="text-sm text-gray-400 mb-4 tracking-wide">
+        You are in <span className="text-yellow-400 font-semibold">{pos}</span>
       </div>
 
       {/* CARDS */}
