@@ -126,7 +126,7 @@ export default function TrainerPage() {
 
   function deal(m: Mode) {
     const s = randomScenario(m);
-    const h = s.kind === "vs3bet" ? sampleOpenedHand(s.hero) : sampleHand();
+    const h = s.kind === "vs3bet" ? sampleOpenedHand(s.hero, s.threebettor) : sampleHand();
     setScenario(s);
     setHand(h);
     setCards(dealCards(h));
