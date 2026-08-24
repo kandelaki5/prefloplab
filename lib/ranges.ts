@@ -489,7 +489,16 @@ export function resolveVsOpenAction(hero: AnySeat, opener: Position, hand: strin
 // simplification (we don't have evidence yet that e.g. facing HJ's 3bet
 // plays differently than facing CO's) — so each hero has ONE spot, plus
 // the list of seats we currently have 3bet data for.
-type Vs3betSpot = { threebettors: AnySeat[]; raiseCore: string[]; callCore: string[]; mixes: Record<string, Facing> };
+type Vs3betSpot = {
+  threebettors: AnySeat[];
+  raiseCore: string[];
+  callCore: string[];
+  // Explicit fold zone — for a hero whose RFI range is so wide (SB) that
+  // "always opened it" stops implying "good enough to continue with".
+  // Beats the pure-RFI-defaults-to-call fallback below.
+  foldCore?: string[];
+  mixes: Record<string, Facing>;
+};
 
 const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
   UTG: {
@@ -564,33 +573,69 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
   },
   SB: {
     // SB's own opening range is the widest of all (every pair, every
-    // suited hand pure-raise) — only BB can ever 3bet it.
+    // suited hand pure-raise) — only BB can ever 3bet it. Unlike the
+    // tighter openers, "SB always opens this" does NOT imply "good enough
+    // to continue with": most of that range was only ever a profitable
+    // steal, and folds outright to real aggression. Curated from the
+    // reference chart — foldCore explicitly overrides the pure-RFI-calls
+    // default for that trashy bottom half.
     threebettors: ["BB"],
     raiseCore: ["QQ+", "AKs", "AKo"],
     callCore: [
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
-      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
-      "K2s+", "Q2s+", "J2s+", "T4s+", "94s+", "84s+", "74s+", "64s+", "54s", "53s", "43s",
-      "A2o+", "K7o+", "Q9o+",
+      "KQs", "KTs", "K9s", "K8s", "QJs", "QTs", "Q9s", "JTs", "J9s", "J8s",
+      "T9s", "T8s", "98s", "87s", "76s", "65s", "54s", "JTo",
+    ],
+    foldCore: [
+      "Q8s", "Q7s", "Q6s", "Q5s", "Q4s", "Q3s", "Q2s",
+      "K4s", "K3s", "K2s",
+      "J7s", "J6s", "J5s", "J4s", "J3s", "J2s",
+      "T7s", "T6s", "T5s", "T4s", "T3s", "T2s",
+      "96s", "95s", "94s", "93s", "92s",
+      "86s", "85s", "84s", "83s", "82s",
+      "75s", "74s", "73s", "72s",
+      "64s", "63s", "62s",
+      "53s", "52s", "43s", "42s", "32s",
+      "K6o", "K5o", "K4o", "K3o", "K2o",
+      "Q8o", "Q7o", "Q6o", "Q5o", "Q4o", "Q3o", "Q2o",
+      "J9o", "J8o", "J7o", "J6o", "J5o", "J4o", "J3o", "J2o",
+      "T9o", "T8o", "T7o", "T6o", "T5o", "T4o", "T3o", "T2o",
+      "98o", "97o", "96o", "95o", "94o", "93o", "92o",
+      "87o", "86o", "85o", "84o", "83o", "82o",
+      "76o", "75o", "74o", "73o", "72o",
+      "65o", "64o", "63o", "62o",
+      "54o", "53o", "52o", "43o", "42o", "32o",
     ],
     mixes: {
-      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 3 },
+      "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KJs": { raise: 1, call: 5 },
+      "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 1, call: 5 },
+      "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 }, "A2s": { raise: 1, call: 0 },
+      "K7s": { raise: 1, call: 0 }, "K6s": { raise: 1, call: 0 }, "K5s": { raise: 1, call: 2 },
+      "T9s": { raise: 1, call: 5 },
+      "AQo": { raise: 1, call: 5 }, "AJo": { raise: 1, call: 5 }, "KQo": { raise: 1, call: 5 },
+      "KJo": { raise: 1, call: 5 }, "QJo": { raise: 1, call: 3 },
+      "ATo": { raise: 1, call: 5 }, "KTo": { raise: 1, call: 5 },
+      "QTo": { raise: 0, call: 0 },
       "A2o": { raise: 0, call: 2 }, "A3o": { raise: 0, call: 2 }, "A4o": { raise: 0, call: 2 },
       "A5o": { raise: 0, call: 2 }, "A6o": { raise: 0, call: 2 },
       "K7o": { raise: 0, call: 2 }, "K8o": { raise: 0, call: 2 },
-      "Q9o": { raise: 0, call: 2 }, "QTo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 3 },
+      "Q9o": { raise: 0, call: 2 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
 };
 
-const VS3BET_SETS: Partial<Record<Position, { raise: Set<string>; call: Set<string> }>> = Object.fromEntries(
-  Object.entries(VS3BET_DATA).map(([hero, spot]) => [
-    hero,
-    { raise: expandRange(spot!.raiseCore), call: expandRange(spot!.callCore) },
-  ])
-);
+const VS3BET_SETS: Partial<Record<Position, { raise: Set<string>; call: Set<string>; fold: Set<string> }>> =
+  Object.fromEntries(
+    Object.entries(VS3BET_DATA).map(([hero, spot]) => [
+      hero,
+      {
+        raise: expandRange(spot!.raiseCore),
+        call: expandRange(spot!.callCore),
+        fold: expandRange(spot!.foldCore ?? []),
+      },
+    ])
+  );
 
 /** Openers we have facing-3bet data for. */
 export const VS3BET_OPENERS: Position[] = Object.keys(VS3BET_DATA) as Position[];
@@ -614,6 +659,7 @@ export function vs3betSixths(hero: Position, threebettor: AnySeat, hand: string)
   if (override) return override;
   if (sets.raise.has(hand)) return { raise: 6, call: 0 };
   if (sets.call.has(hand)) return { raise: 0, call: 6 };
+  if (sets.fold.has(hand)) return { raise: 0, call: 0 };
 
   // Not explicitly curated for this hero — fall back on the shape of the
   // opening range itself: a hand hero always opens (pure RFI) is good
