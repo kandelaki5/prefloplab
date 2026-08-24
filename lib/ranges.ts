@@ -504,9 +504,13 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
   UTG: {
     threebettors: ["HJ", "CO", "BTN", "SB", "BB"],
     raiseCore: ["QQ+", "AKs", "AKo"],
-    callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs"],
+    callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "ATs", "A9s", "A8s", "KQs", "KJs", "KTs", "K9s", "K8s", "QJs", "QTs", "JTs"],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      // Weak suited aces: enough blocker/bluff value for an occasional
+      // 4-bet, but not enough hand to flat outright once they're this weak.
+      "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 1, call: 5 },
+      "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 }, "A2s": { raise: 1, call: 0 },
       // Marginal offsuit broadways don't realize equity well against a
       // 3-bet and are folded more often than called.
       "AQo": { raise: 0, call: 2 }, "KQo": { raise: 0, call: 3 },
@@ -521,11 +525,15 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
     raiseCore: ["QQ+", "AKs", "AKo"],
     callCore: [
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
-      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "AJs", "ATs", "A9s", "A8s", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K5s", "K6s", "K7s", "K8s", "K9s", "Q8s", "Q9s", "J8s", "J9s", "T8s", "T9s", "98s", "87s",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      // Weak suited aces: enough blocker/bluff value for an occasional
+      // 4-bet, but not enough hand to flat outright once they're this weak.
+      "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 1, call: 5 },
+      "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 }, "A2s": { raise: 1, call: 0 },
       "AQo": { raise: 0, call: 3 }, "KQo": { raise: 0, call: 3 },
       "AJo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 1 },
       "ATo": { raise: 0, call: 2 },
@@ -539,11 +547,15 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
     raiseCore: ["QQ+", "AKs", "AKo"],
     callCore: [
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
-      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "AJs", "ATs", "A9s", "A8s", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K2s+", "Q5s+", "J6s+", "T6s+", "96s+", "87s", "86s", "76s", "65s",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      // Weak suited aces: enough blocker/bluff value for an occasional
+      // 4-bet, but not enough hand to flat outright once they're this weak.
+      "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 1, call: 5 },
+      "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 }, "A2s": { raise: 1, call: 0 },
       "AQo": { raise: 0, call: 3 }, "KQo": { raise: 0, call: 3 },
       "AJo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 2 },
       "ATo": { raise: 0, call: 2 }, "KTo": { raise: 0, call: 2 },
@@ -558,12 +570,16 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
     raiseCore: ["QQ+", "AKs", "AKo"],
     callCore: [
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
-      "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
+      "AJs", "ATs", "A9s", "A8s", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K2s+", "Q2s+", "J2s+", "T4s+", "93s+", "83s+", "73s+", "63s+", "54s", "53s", "43s",
       "A7o+", "K9o+", "QTo+", "JTo",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
+      // Weak suited aces: enough blocker/bluff value for an occasional
+      // 4-bet, but not enough hand to flat outright once they're this weak.
+      "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 1, call: 5 },
+      "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 }, "A2s": { raise: 1, call: 0 },
       "AQo": { raise: 0, call: 3 },
       "A7o": { raise: 0, call: 2 }, "A8o": { raise: 0, call: 2 }, "A9o": { raise: 0, call: 3 },
       "K9o": { raise: 0, call: 2 }, "KTo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 },
@@ -583,7 +599,7 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
     raiseCore: ["QQ+", "AKs", "AKo"],
     callCore: [
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
-      "KQs", "KTs", "K9s", "K8s", "QJs", "QTs", "Q9s", "JTs", "J9s", "J8s",
+      "ATs", "A9s", "A8s", "KQs", "KTs", "K9s", "K8s", "QJs", "QTs", "Q9s", "JTs", "J9s", "J8s",
       "T9s", "T8s", "98s", "87s", "76s", "65s", "54s", "JTo",
     ],
     foldCore: [
@@ -591,7 +607,7 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
       "K4s", "K3s", "K2s",
       "J7s", "J6s", "J5s", "J4s", "J3s", "J2s",
       "T7s", "T6s", "T5s", "T4s", "T3s", "T2s",
-      "96s", "95s", "94s", "93s", "92s",
+      "97s", "96s", "95s", "94s", "93s", "92s",
       "86s", "85s", "84s", "83s", "82s",
       "75s", "74s", "73s", "72s",
       "64s", "63s", "62s",
@@ -618,7 +634,8 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
       "QTo": { raise: 0, call: 0 },
       "A2o": { raise: 0, call: 2 }, "A3o": { raise: 0, call: 2 }, "A4o": { raise: 0, call: 2 },
       "A5o": { raise: 0, call: 2 }, "A6o": { raise: 0, call: 2 },
-      "K7o": { raise: 0, call: 2 }, "K8o": { raise: 0, call: 2 },
+      "A7o": { raise: 0, call: 2 }, "A8o": { raise: 0, call: 2 }, "A9o": { raise: 0, call: 2 },
+      "K7o": { raise: 0, call: 2 }, "K8o": { raise: 0, call: 2 }, "K9o": { raise: 0, call: 2 },
       "Q9o": { raise: 0, call: 2 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
