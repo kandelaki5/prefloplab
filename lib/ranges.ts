@@ -495,10 +495,13 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
   UTG: {
     threebettors: ["HJ", "CO", "BTN", "SB", "BB"],
     raiseCore: ["QQ+", "AKs", "AKo"],
-    callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs", "KJo"],
+    callCore: ["JJ", "TT", "99", "88", "77", "66", "55", "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs"],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 3 }, "KJo": { raise: 0, call: 4 },
+      // Marginal offsuit broadways don't realize equity well against a
+      // 3-bet and are folded more often than called.
+      "AQo": { raise: 0, call: 2 }, "KQo": { raise: 0, call: 3 },
+      "AJo": { raise: 0, call: 1 }, "KJo": { raise: 0, call: 2 }, "QJo": { raise: 0, call: 1 },
     },
   },
   HJ: {
@@ -511,11 +514,12 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
       "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K5s", "K6s", "K7s", "K8s", "K9s", "Q8s", "Q9s", "J8s", "J9s", "T8s", "T9s", "98s", "87s",
-      "KJo", "ATo",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 4 }, "KJo": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
+      "AQo": { raise: 0, call: 3 }, "KQo": { raise: 0, call: 3 },
+      "AJo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 1 },
+      "ATo": { raise: 0, call: 2 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
@@ -528,12 +532,12 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
       "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K2s+", "Q5s+", "J6s+", "T6s+", "96s+", "87s", "86s", "76s", "65s",
-      "KJo", "ATo", "KTo", "QJo",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 5 }, "KJo": { raise: 0, call: 5 },
-      "ATo": { raise: 0, call: 4 }, "KTo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 4 },
+      "AQo": { raise: 0, call: 3 }, "KQo": { raise: 0, call: 3 },
+      "AJo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 2 },
+      "ATo": { raise: 0, call: 2 }, "KTo": { raise: 0, call: 2 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
@@ -551,10 +555,10 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 5 },
-      "A7o": { raise: 0, call: 4 }, "A8o": { raise: 0, call: 4 }, "A9o": { raise: 0, call: 5 },
-      "K9o": { raise: 0, call: 4 }, "KTo": { raise: 0, call: 4 }, "KJo": { raise: 0, call: 5 },
-      "QTo": { raise: 0, call: 4 }, "QJo": { raise: 0, call: 5 }, "JTo": { raise: 0, call: 3 },
+      "AQo": { raise: 0, call: 3 },
+      "A7o": { raise: 0, call: 2 }, "A8o": { raise: 0, call: 2 }, "A9o": { raise: 0, call: 3 },
+      "K9o": { raise: 0, call: 2 }, "KTo": { raise: 0, call: 2 }, "KJo": { raise: 0, call: 3 },
+      "QTo": { raise: 0, call: 2 }, "QJo": { raise: 0, call: 3 }, "JTo": { raise: 0, call: 2 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
@@ -567,15 +571,15 @@ const VS3BET_DATA: Partial<Record<Position, Vs3betSpot>> = {
       "JJ", "TT", "99", "88", "77", "66", "55", "44", "33", "22",
       "AJs", "KQs", "KJs", "KTs", "QJs", "QTs", "JTs",
       "K2s+", "Q2s+", "J2s+", "T4s+", "94s+", "84s+", "74s+", "64s+", "54s", "53s", "43s",
-      "A7o+", "K9o+", "QTo+", "JTo",
+      "A2o+", "K7o+", "Q9o+",
     ],
     mixes: {
       "AQs": { raise: 2, call: 4 }, "AJs": { raise: 1, call: 5 }, "KQs": { raise: 1, call: 5 },
-      "AQo": { raise: 0, call: 5 },
-      "A2o": { raise: 0, call: 4 }, "A3o": { raise: 0, call: 4 }, "A4o": { raise: 0, call: 4 },
-      "A5o": { raise: 0, call: 4 }, "A6o": { raise: 0, call: 4 },
-      "K7o": { raise: 0, call: 4 }, "K8o": { raise: 0, call: 4 },
-      "Q9o": { raise: 0, call: 4 }, "QTo": { raise: 0, call: 5 }, "QJo": { raise: 0, call: 5 },
+      "AQo": { raise: 0, call: 3 },
+      "A2o": { raise: 0, call: 2 }, "A3o": { raise: 0, call: 2 }, "A4o": { raise: 0, call: 2 },
+      "A5o": { raise: 0, call: 2 }, "A6o": { raise: 0, call: 2 },
+      "K7o": { raise: 0, call: 2 }, "K8o": { raise: 0, call: 2 },
+      "Q9o": { raise: 0, call: 2 }, "QTo": { raise: 0, call: 3 }, "QJo": { raise: 0, call: 3 },
       "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
     },
   },
@@ -599,7 +603,8 @@ export function threebettorsFor(hero: Position): AnySeat[] {
 /** {raise, call} in sixths facing a 3-bet, or null if `hand` isn't
  *  something `hero` would have opened in the first place. */
 export function vs3betSixths(hero: Position, threebettor: AnySeat, hand: string): Facing | null {
-  if (raiseSixths(hero, hand) === 0) return null; // never opened this hand — no data
+  const openSixths = raiseSixths(hero, hand);
+  if (openSixths === 0) return null; // never opened this hand — no data
 
   const spot = VS3BET_DATA[hero];
   const sets = VS3BET_SETS[hero];
@@ -609,7 +614,12 @@ export function vs3betSixths(hero: Position, threebettor: AnySeat, hand: string)
   if (override) return override;
   if (sets.raise.has(hand)) return { raise: 6, call: 0 };
   if (sets.call.has(hand)) return { raise: 0, call: 6 };
-  return { raise: 0, call: 0 };
+
+  // Not explicitly curated for this hero — fall back on the shape of the
+  // opening range itself: a hand hero always opens (pure RFI) is good
+  // enough to continue with (default Call); one hero only sometimes opens
+  // (a mixed RFI frequency) is marginal and folds to aggression by default.
+  return openSixths === 6 ? { raise: 0, call: 6 } : { raise: 0, call: 0 };
 }
 
 export function isVs3betMixed(hero: Position, threebettor: AnySeat, hand: string): boolean {
