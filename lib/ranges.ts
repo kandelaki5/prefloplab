@@ -196,247 +196,361 @@ export const ALL_HANDS: string[] = HAND_GRID.flat();
 /**
  * Facing-an-open ranges: hero acts after someone already raised. Three
  * actions now — Fold, Call, Raise (3-bet) — each hand split in sixths the
- * same way as the RFI ranges, cross-checked against reference charts.
+ * same way as the RFI ranges.
  *
- * Keyed by opener first, then by hero seat. VS_OPENERS lists which opening
- * positions currently have data; more slot in the same way.
+ * One chart per (opener, hero) pair, read straight from the reference
+ * images. Unlike the vs-3bet charts these have no greyed-out cells: hero
+ * can hold any hand when facing a raise, so all 169 are live. Fold is
+ * left implicit — raise + call + fold always sums to six, so a hand in
+ * neither list folds. That is arithmetic, not a default.
  */
 export type Facing = { raise: number; call: number };
 
-type VsData = {
-  raiseCore: Partial<Record<AnySeat, string[]>>;
-  callCore: Partial<Record<AnySeat, string[]>>;
-  mixes: Partial<Record<AnySeat, Record<string, Facing>>>;
+type VsOpenSpot = {
+  raise: string[];
+  call: string[];
+  mixes: Record<string, Facing>;
 };
 
-const VS_DATA: Partial<Record<Position, VsData>> = {
+const VS_DATA: Partial<Record<Position, Partial<Record<AnySeat, VsOpenSpot>>>> = {
   UTG: {
-    raiseCore: {
-      HJ: ["55+", "AKs", "AKo"],
-      CO: ["66+", "AKs", "AKo", "AQs"],
-      BTN: ["QQ+", "AKs", "AKo"],
-      SB: ["QQ+", "AKs", "AKo"],
-      BB: ["QQ+", "AKs", "AKo"],
-    },
-    callCore: {
-      BTN: ["77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s"],
-      SB: [
-        "22+", "A2s+", "K5s+", "Q7s+", "J8s+", "T8s+", "98s", "87s", "76s", "65s", "54s",
-        "ATo+", "KJo+", "QJo",
+    HJ: {
+      raise: [
+        "AA", "AKs", "AQs", "AJs", "ATs", "A5s", "AKo", "KK", "KQs", "KJs", "KTs", "QQ", "JJ", "TT",
       ],
-      BB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T5s+", "94s+", "84s+", "74s+", "64s+", "54s",
-        "A2o+", "K5o+", "Q7o+", "J8o+", "T8o+", "97o+",
-      ],
+      call: [],
+      mixes: {
+        "A9s": { raise: 2, call: 0 }, "A8s": { raise: 2, call: 0 }, "A7s": { raise: 1, call: 0 },
+        "A4s": { raise: 5, call: 0 }, "AQo": { raise: 5, call: 0 }, "KQo": { raise: 2, call: 0 },
+        "QJs": { raise: 3, call: 0 }, "JTs": { raise: 1, call: 0 }, "T9s": { raise: 1, call: 0 },
+        "99": { raise: 4, call: 0 }, "88": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 },
+        "77": { raise: 1, call: 0 }, "76s": { raise: 3, call: 0 }, "65s": { raise: 4, call: 0 },
+        "54s": { raise: 3, call: 0 },
+      },
     },
-    mixes: {
-      HJ: {
-        "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
-        "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
-        "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
-        "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
-        "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
-        "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
+    CO: {
+      raise: [
+        "AQs", "AJs", "ATs", "A5s", "A4s", "AKo", "KK", "KQs", "KJs", "KTs", "QQ", "QJs", "JJ",
+        "TT", "99",
+      ],
+      call: [],
+      mixes: {
+        "AA": { raise: 0, call: 2 }, "AKs": { raise: 0, call: 3 }, "A9s": { raise: 2, call: 0 },
+        "A8s": { raise: 3, call: 0 }, "A7s": { raise: 2, call: 0 }, "AQo": { raise: 5, call: 0 },
+        "KQo": { raise: 2, call: 0 }, "JTs": { raise: 2, call: 0 }, "T9s": { raise: 1, call: 0 },
+        "88": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 }, "77": { raise: 2, call: 0 },
+        "76s": { raise: 3, call: 0 }, "65s": { raise: 4, call: 0 }, "54s": { raise: 3, call: 0 },
       },
-      CO: {
-        "A9s": { raise: 2, call: 0 }, "A8s": { raise: 2, call: 0 }, "A7s": { raise: 2, call: 0 },
-        "A5s": { raise: 2, call: 0 }, "A4s": { raise: 2, call: 0 }, "A3s": { raise: 2, call: 0 },
-        "JTs": { raise: 2, call: 0 }, "QJs": { raise: 2, call: 0 }, "KQs": { raise: 2, call: 0 },
-        "98s": { raise: 2, call: 0 }, "87s": { raise: 2, call: 0 }, "76s": { raise: 2, call: 0 },
-        "65s": { raise: 2, call: 0 }, "54s": { raise: 2, call: 0 },
-        "44": { raise: 0, call: 1 }, "55": { raise: 0, call: 1 },
+    },
+    BTN: {
+      raise: ["KK"],
+      call: [],
+      mixes: {
+        "AA": { raise: 0, call: 1 }, "AKs": { raise: 1, call: 2 }, "AQs": { raise: 5, call: 1 },
+        "AJs": { raise: 3, call: 3 }, "ATs": { raise: 3, call: 3 }, "A9s": { raise: 3, call: 3 },
+        "A8s": { raise: 5, call: 1 }, "A7s": { raise: 3, call: 1 }, "A5s": { raise: 4, call: 2 },
+        "A4s": { raise: 4, call: 2 }, "A3s": { raise: 4, call: 2 }, "AKo": { raise: 4, call: 2 },
+        "KQs": { raise: 4, call: 2 }, "KJs": { raise: 3, call: 3 }, "KTs": { raise: 4, call: 2 },
+        "K9s": { raise: 4, call: 1 }, "AQo": { raise: 3, call: 3 }, "KQo": { raise: 3, call: 2 },
+        "QQ": { raise: 5, call: 1 }, "QJs": { raise: 4, call: 2 }, "QTs": { raise: 3, call: 3 },
+        "AJo": { raise: 1, call: 1 }, "JJ": { raise: 3, call: 3 }, "JTs": { raise: 2, call: 4 },
+        "J9s": { raise: 0, call: 1 }, "TT": { raise: 3, call: 3 }, "T9s": { raise: 3, call: 3 },
+        "99": { raise: 2, call: 4 }, "98s": { raise: 1, call: 2 }, "88": { raise: 2, call: 4 },
+        "87s": { raise: 2, call: 1 }, "77": { raise: 2, call: 4 }, "76s": { raise: 2, call: 2 },
+        "66": { raise: 1, call: 3 }, "65s": { raise: 3, call: 3 }, "55": { raise: 1, call: 3 },
+        "54s": { raise: 3, call: 3 }, "44": { raise: 0, call: 1 }, "33": { raise: 0, call: 1 },
+        "22": { raise: 0, call: 1 },
       },
-      BTN: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 0 }, "AJs": { raise: 1, call: 5 },
-        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
-        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
-        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 },
-        "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
-        "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 3 },
+    },
+    SB: {
+      raise: ["AA", "AKs", "AQs", "KK", "KQs", "QQ"],
+      call: [],
+      mixes: {
+        "AJs": { raise: 2, call: 4 }, "ATs": { raise: 3, call: 3 }, "A9s": { raise: 1, call: 3 },
+        "A8s": { raise: 1, call: 1 }, "A5s": { raise: 5, call: 1 }, "A4s": { raise: 5, call: 1 },
+        "A3s": { raise: 0, call: 1 }, "AKo": { raise: 5, call: 1 }, "KJs": { raise: 4, call: 2 },
+        "KTs": { raise: 4, call: 2 }, "AQo": { raise: 2, call: 3 }, "KQo": { raise: 0, call: 1 },
+        "QJs": { raise: 4, call: 2 }, "QTs": { raise: 3, call: 2 }, "JJ": { raise: 4, call: 2 },
+        "JTs": { raise: 3, call: 3 }, "TT": { raise: 3, call: 3 }, "T9s": { raise: 1, call: 1 },
+        "99": { raise: 2, call: 4 }, "98s": { raise: 0, call: 1 }, "88": { raise: 2, call: 4 },
+        "87s": { raise: 1, call: 1 }, "77": { raise: 2, call: 4 }, "76s": { raise: 1, call: 1 },
+        "66": { raise: 1, call: 2 }, "65s": { raise: 2, call: 1 }, "55": { raise: 1, call: 2 },
+        "54s": { raise: 2, call: 1 }, "44": { raise: 0, call: 1 }, "33": { raise: 0, call: 1 },
+        "22": { raise: 0, call: 1 },
       },
-      SB: {
-        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
-        "AJo": { raise: 0, call: 4 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 3 },
-        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 3 },
-        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
-      },
-      BB: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
-        "KQs": { raise: 0, call: 6 }, "K4o": { raise: 0, call: 3 }, "K3o": { raise: 0, call: 2 },
-        "Q6o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 }, "T7o": { raise: 0, call: 3 },
-        "96o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 4 }, "32s": { raise: 0, call: 4 },
+    },
+    BB: {
+      raise: ["AKs", "KK", "KQs", "QQ"],
+      call: [
+        "A9s", "K4s", "K3s", "AQo", "KQo", "Q8s", "Q7s", "KJo", "QJo", "T7s", "99", "97s", "96s",
+        "88", "86s", "85s", "77", "75s", "74s", "66", "64s", "63s", "55", "53s", "52s", "44", "42s",
+        "33", "22",
+      ],
+      mixes: {
+        "AQs": { raise: 4, call: 2 }, "AJs": { raise: 1, call: 5 }, "ATs": { raise: 2, call: 4 },
+        "A8s": { raise: 1, call: 5 }, "A7s": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 },
+        "A5s": { raise: 4, call: 2 }, "A4s": { raise: 4, call: 2 }, "A3s": { raise: 1, call: 5 },
+        "A2s": { raise: 1, call: 5 }, "AKo": { raise: 4, call: 2 }, "KJs": { raise: 4, call: 2 },
+        "KTs": { raise: 3, call: 3 }, "K9s": { raise: 1, call: 5 }, "K8s": { raise: 1, call: 5 },
+        "K7s": { raise: 1, call: 5 }, "K6s": { raise: 1, call: 5 }, "K5s": { raise: 2, call: 4 },
+        "K2s": { raise: 0, call: 5 }, "QJs": { raise: 5, call: 1 }, "QTs": { raise: 2, call: 4 },
+        "Q9s": { raise: 1, call: 5 }, "Q6s": { raise: 0, call: 5 }, "Q5s": { raise: 0, call: 5 },
+        "Q4s": { raise: 0, call: 1 }, "AJo": { raise: 1, call: 5 }, "JJ": { raise: 1, call: 5 },
+        "JTs": { raise: 3, call: 3 }, "J9s": { raise: 1, call: 5 }, "J8s": { raise: 1, call: 5 },
+        "J7s": { raise: 0, call: 5 }, "ATo": { raise: 1, call: 5 }, "KTo": { raise: 0, call: 2 },
+        "QTo": { raise: 0, call: 3 }, "JTo": { raise: 0, call: 5 }, "TT": { raise: 1, call: 5 },
+        "T9s": { raise: 1, call: 5 }, "T8s": { raise: 1, call: 5 }, "T6s": { raise: 0, call: 3 },
+        "A9o": { raise: 0, call: 1 }, "T9o": { raise: 0, call: 1 }, "98s": { raise: 1, call: 5 },
+        "95s": { raise: 0, call: 2 }, "98o": { raise: 0, call: 1 }, "87s": { raise: 2, call: 4 },
+        "76s": { raise: 1, call: 5 }, "65s": { raise: 2, call: 4 }, "65o": { raise: 0, call: 1 },
+        "54s": { raise: 2, call: 4 }, "43s": { raise: 1, call: 5 },
       },
     },
   },
   HJ: {
-    // Facing HJ's (wider, weaker) open, everyone plays a notch looser than
-    // the equivalent seat would facing a UTG open.
-    raiseCore: {
-      CO: ["55+", "AKs", "AKo"],
-      BTN: ["66+", "AKs", "AKo", "AQs"],
-      SB: ["QQ+", "AKs", "AKo"],
-      BB: ["QQ+", "AKs", "AKo"],
+    CO: {
+      raise: [
+        "AA", "AQs", "AJs", "ATs", "A5s", "A4s", "AKo", "KK", "KQs", "KJs", "KTs", "AQo", "QQ",
+        "QJs", "JJ", "TT", "99",
+      ],
+      call: [],
+      mixes: {
+        "A9s": { raise: 5, call: 0 }, "A8s": { raise: 4, call: 0 }, "A7s": { raise: 3, call: 0 },
+        "A3s": { raise: 1, call: 0 }, "K9s": { raise: 1, call: 0 }, "KQo": { raise: 3, call: 0 },
+        "QTs": { raise: 2, call: 0 }, "AJo": { raise: 2, call: 0 }, "JTs": { raise: 4, call: 0 },
+        "T9s": { raise: 1, call: 0 }, "88": { raise: 4, call: 0 }, "87s": { raise: 1, call: 0 },
+        "77": { raise: 3, call: 0 }, "76s": { raise: 3, call: 0 }, "66": { raise: 1, call: 0 },
+        "65s": { raise: 4, call: 0 }, "54s": { raise: 3, call: 0 },
+      },
     },
-    callCore: {
-      BTN: [
-        "77+", "A2s+", "KTs+", "K9s", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s", "54s",
-      ],
-      SB: [
-        "22+", "A2s+", "K4s+", "Q6s+", "J7s+", "T7s+", "97s+", "87s", "76s", "65s", "54s",
-        "ATo+", "KTo+", "QJo",
-      ],
-      BB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J3s+", "T4s+", "93s+", "83s+", "73s+", "63s+", "53s+",
-        "A2o+", "K4o+", "Q6o+", "J7o+", "T7o+", "96o+",
-      ],
+    BTN: {
+      raise: ["AA", "AKs", "AQs", "KK", "QQ"],
+      call: [],
+      mixes: {
+        "AJs": { raise: 4, call: 2 }, "ATs": { raise: 3, call: 3 }, "A9s": { raise: 4, call: 2 },
+        "A8s": { raise: 5, call: 1 }, "A7s": { raise: 5, call: 1 }, "A6s": { raise: 2, call: 0 },
+        "A5s": { raise: 5, call: 1 }, "A4s": { raise: 4, call: 2 }, "A3s": { raise: 4, call: 2 },
+        "AKo": { raise: 5, call: 1 }, "KQs": { raise: 4, call: 2 }, "KJs": { raise: 5, call: 1 },
+        "KTs": { raise: 4, call: 2 }, "K9s": { raise: 5, call: 1 }, "AQo": { raise: 4, call: 2 },
+        "KQo": { raise: 4, call: 2 }, "QJs": { raise: 4, call: 2 }, "QTs": { raise: 4, call: 2 },
+        "AJo": { raise: 3, call: 1 }, "KJo": { raise: 0, call: 1 }, "JJ": { raise: 4, call: 2 },
+        "JTs": { raise: 3, call: 3 }, "J9s": { raise: 2, call: 1 }, "TT": { raise: 4, call: 2 },
+        "T9s": { raise: 4, call: 2 }, "99": { raise: 3, call: 3 }, "98s": { raise: 1, call: 1 },
+        "88": { raise: 3, call: 3 }, "87s": { raise: 2, call: 1 }, "77": { raise: 3, call: 3 },
+        "76s": { raise: 3, call: 1 }, "66": { raise: 2, call: 3 }, "65s": { raise: 4, call: 2 },
+        "55": { raise: 1, call: 2 }, "54s": { raise: 3, call: 2 }, "44": { raise: 0, call: 1 },
+        "33": { raise: 0, call: 1 },
+      },
     },
-    mixes: {
-      CO: {
-        "A9s": { raise: 1, call: 0 }, "A8s": { raise: 1, call: 0 }, "A7s": { raise: 1, call: 0 },
-        "A5s": { raise: 1, call: 0 }, "A4s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 0 },
-        "JTs": { raise: 1, call: 0 }, "QJs": { raise: 1, call: 0 },
-        "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
-        "65s": { raise: 1, call: 0 }, "54s": { raise: 1, call: 0 },
-        "44": { raise: 1, call: 0 }, "33": { raise: 1, call: 0 },
+    SB: {
+      raise: ["AQs", "AKo", "KK", "KQs", "QQ"],
+      call: [],
+      mixes: {
+        "AA": { raise: 0, call: 2 }, "AKs": { raise: 0, call: 3 }, "AJs": { raise: 4, call: 2 },
+        "ATs": { raise: 3, call: 3 }, "A9s": { raise: 3, call: 3 }, "A8s": { raise: 2, call: 1 },
+        "A7s": { raise: 0, call: 1 }, "A5s": { raise: 5, call: 1 }, "A4s": { raise: 5, call: 1 },
+        "A3s": { raise: 1, call: 1 }, "KJs": { raise: 5, call: 1 }, "KTs": { raise: 4, call: 2 },
+        "K9s": { raise: 1, call: 1 }, "AQo": { raise: 4, call: 2 }, "KQo": { raise: 1, call: 1 },
+        "QJs": { raise: 5, call: 1 }, "QTs": { raise: 4, call: 2 }, "AJo": { raise: 0, call: 1 },
+        "JJ": { raise: 5, call: 1 }, "JTs": { raise: 4, call: 2 }, "TT": { raise: 4, call: 2 },
+        "T9s": { raise: 1, call: 1 }, "99": { raise: 3, call: 3 }, "98s": { raise: 0, call: 1 },
+        "88": { raise: 3, call: 3 }, "87s": { raise: 1, call: 1 }, "77": { raise: 3, call: 3 },
+        "76s": { raise: 1, call: 1 }, "66": { raise: 1, call: 2 }, "65s": { raise: 1, call: 1 },
+        "55": { raise: 0, call: 2 }, "54s": { raise: 1, call: 1 }, "44": { raise: 0, call: 1 },
+        "33": { raise: 0, call: 1 }, "22": { raise: 0, call: 1 },
       },
-      BTN: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 1 }, "AJs": { raise: 1, call: 5 },
-        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
-        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 4 },
-        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 }, "KQo": { raise: 0, call: 2 },
-        "44": { raise: 0, call: 4 }, "33": { raise: 0, call: 4 }, "22": { raise: 0, call: 4 },
-        "A9s": { raise: 1, call: 4 }, "A8s": { raise: 1, call: 4 }, "A7s": { raise: 1, call: 4 },
-      },
-      SB: {
-        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 2 }, "AJs": { raise: 1, call: 5 },
-        "AJo": { raise: 0, call: 5 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 4 },
-        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 4 },
-        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
-      },
-      BB: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
-        "KQs": { raise: 0, call: 6 }, "K3o": { raise: 0, call: 3 }, "K2o": { raise: 0, call: 2 },
-        "Q5o": { raise: 0, call: 3 }, "J6o": { raise: 0, call: 3 }, "T6o": { raise: 0, call: 3 },
-        "95o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 5 }, "32s": { raise: 0, call: 5 },
+    },
+    BB: {
+      raise: ["AKo", "KK", "KQs", "KJs", "QQ", "QJs"],
+      call: [
+        "K9s", "K8s", "K3s", "K2s", "Q7s", "Q6s", "Q5s", "Q4s", "KJo", "QJo", "J8s", "J7s", "KTo",
+        "JTo", "T7s", "A9o", "99", "96s", "88", "86s", "85s", "77", "75s", "74s", "66", "64s",
+        "63s", "55", "53s", "52s", "44", "42s", "33", "22",
+      ],
+      mixes: {
+        "AA": { raise: 0, call: 2 }, "AKs": { raise: 0, call: 3 }, "AQs": { raise: 5, call: 1 },
+        "AJs": { raise: 1, call: 5 }, "ATs": { raise: 1, call: 5 }, "A9s": { raise: 2, call: 4 },
+        "A8s": { raise: 1, call: 5 }, "A7s": { raise: 1, call: 5 }, "A6s": { raise: 2, call: 4 },
+        "A5s": { raise: 5, call: 1 }, "A4s": { raise: 3, call: 3 }, "A3s": { raise: 1, call: 5 },
+        "A2s": { raise: 1, call: 5 }, "KTs": { raise: 4, call: 2 }, "K7s": { raise: 1, call: 5 },
+        "K6s": { raise: 1, call: 5 }, "K5s": { raise: 1, call: 5 }, "K4s": { raise: 1, call: 5 },
+        "AQo": { raise: 1, call: 5 }, "KQo": { raise: 1, call: 5 }, "QTs": { raise: 5, call: 1 },
+        "Q9s": { raise: 2, call: 4 }, "Q8s": { raise: 1, call: 5 }, "Q3s": { raise: 0, call: 3 },
+        "AJo": { raise: 1, call: 5 }, "JJ": { raise: 4, call: 2 }, "JTs": { raise: 5, call: 1 },
+        "J9s": { raise: 1, call: 5 }, "J6s": { raise: 0, call: 1 }, "ATo": { raise: 1, call: 5 },
+        "QTo": { raise: 0, call: 5 }, "TT": { raise: 1, call: 5 }, "T9s": { raise: 2, call: 4 },
+        "T8s": { raise: 1, call: 5 }, "T6s": { raise: 0, call: 3 }, "T9o": { raise: 0, call: 1 },
+        "98s": { raise: 1, call: 5 }, "97s": { raise: 1, call: 5 }, "95s": { raise: 0, call: 4 },
+        "A8o": { raise: 0, call: 1 }, "98o": { raise: 0, call: 1 }, "87s": { raise: 2, call: 4 },
+        "87o": { raise: 0, call: 1 }, "76s": { raise: 2, call: 4 }, "76o": { raise: 0, call: 1 },
+        "65s": { raise: 2, call: 4 }, "A5o": { raise: 0, call: 3 }, "65o": { raise: 0, call: 1 },
+        "54s": { raise: 3, call: 3 }, "54o": { raise: 0, call: 1 }, "43s": { raise: 1, call: 5 },
+        "32s": { raise: 0, call: 1 },
       },
     },
   },
   CO: {
-    // Facing CO's still-wider open (~27% RFI) — another notch looser again.
-    raiseCore: {
-      BTN: ["66+", "AKs", "AKo", "AQs"],
-      SB: ["QQ+", "AKs", "AKo"],
-      BB: ["QQ+", "AKs", "AKo"],
+    BTN: {
+      raise: ["AA", "AQs", "A5s", "AKo", "KK", "KJs", "QQ", "JJ"],
+      call: [],
+      mixes: {
+        "AJs": { raise: 5, call: 1 }, "ATs": { raise: 5, call: 1 }, "A9s": { raise: 5, call: 1 },
+        "A8s": { raise: 5, call: 1 }, "A7s": { raise: 5, call: 1 }, "A6s": { raise: 5, call: 1 },
+        "A4s": { raise: 5, call: 1 }, "A3s": { raise: 5, call: 1 }, "A2s": { raise: 1, call: 0 },
+        "KQs": { raise: 5, call: 1 }, "KTs": { raise: 5, call: 1 }, "K9s": { raise: 5, call: 1 },
+        "K8s": { raise: 1, call: 0 }, "AQo": { raise: 5, call: 1 }, "KQo": { raise: 5, call: 1 },
+        "QJs": { raise: 5, call: 1 }, "QTs": { raise: 4, call: 2 }, "Q9s": { raise: 3, call: 0 },
+        "AJo": { raise: 5, call: 1 }, "KJo": { raise: 2, call: 1 }, "JTs": { raise: 5, call: 1 },
+        "J9s": { raise: 5, call: 1 }, "ATo": { raise: 2, call: 0 }, "KTo": { raise: 1, call: 0 },
+        "TT": { raise: 5, call: 1 }, "T9s": { raise: 5, call: 1 }, "99": { raise: 5, call: 1 },
+        "98s": { raise: 1, call: 1 }, "88": { raise: 5, call: 1 }, "87s": { raise: 2, call: 0 },
+        "77": { raise: 5, call: 1 }, "76s": { raise: 4, call: 1 }, "66": { raise: 5, call: 1 },
+        "65s": { raise: 4, call: 1 }, "55": { raise: 2, call: 1 }, "54s": { raise: 3, call: 1 },
+        "44": { raise: 0, call: 1 },
+      },
     },
-    callCore: {
-      BTN: [
-        "77+", "A2s+", "K9s+", "QTs+", "Q9s", "JTs", "T9s", "98s", "87s", "76s", "65s", "54s",
-      ],
-      SB: [
-        "22+", "A2s+", "K2s+", "Q5s+", "J6s+", "T6s+", "96s+", "87s", "76s", "65s", "54s",
-        "ATo+", "KTo+", "QJo",
-      ],
-      BB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T3s+", "92s+", "82s+", "72s+", "62s+", "52s+",
-        "A2o+", "K3o+", "Q5o+", "J6o+", "T6o+", "95o+",
-      ],
+    SB: {
+      raise: ["AA", "AKs", "AQs", "AJs", "AKo", "KK", "KQs", "KJs", "QQ", "QJs", "JJ"],
+      call: [],
+      mixes: {
+        "ATs": { raise: 3, call: 3 }, "A9s": { raise: 3, call: 3 }, "A8s": { raise: 3, call: 2 },
+        "A7s": { raise: 1, call: 1 }, "A5s": { raise: 5, call: 1 }, "A4s": { raise: 5, call: 1 },
+        "A3s": { raise: 1, call: 1 }, "KTs": { raise: 5, call: 1 }, "K9s": { raise: 3, call: 1 },
+        "AQo": { raise: 5, call: 1 }, "KQo": { raise: 3, call: 2 }, "QTs": { raise: 4, call: 2 },
+        "AJo": { raise: 2, call: 2 }, "JTs": { raise: 5, call: 1 }, "J9s": { raise: 3, call: 1 },
+        "TT": { raise: 5, call: 1 }, "T9s": { raise: 3, call: 1 }, "99": { raise: 4, call: 2 },
+        "88": { raise: 3, call: 3 }, "87s": { raise: 1, call: 1 }, "77": { raise: 3, call: 3 },
+        "76s": { raise: 1, call: 1 }, "66": { raise: 3, call: 2 }, "65s": { raise: 1, call: 1 },
+        "55": { raise: 1, call: 2 }, "54s": { raise: 1, call: 1 }, "44": { raise: 0, call: 1 },
+      },
     },
-    mixes: {
-      BTN: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 2, call: 2 }, "AJs": { raise: 1, call: 5 },
-        "55": { raise: 0, call: 5 }, "66": { raise: 0, call: 5 },
-        "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 5 },
-        "KJs": { raise: 0, call: 5 }, "QJs": { raise: 0, call: 5 }, "KQo": { raise: 0, call: 3 },
-        "44": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "22": { raise: 0, call: 5 },
+    BB: {
+      raise: ["AQs", "AKo", "KK", "KQs", "QQ", "QJs", "JJ"],
+      call: [
+        "ATs", "K8s", "K2s", "Q7s", "Q5s", "Q4s", "Q3s", "Q2s", "J6s", "J4s", "QTo", "JTo", "T6s",
+        "A9o", "97s", "A8o", "88", "86s", "85s", "77", "75s", "74s", "64s", "63s", "55", "53s",
+        "52s", "44", "42s", "33", "22",
+      ],
+      mixes: {
+        "AA": { raise: 0, call: 2 }, "AKs": { raise: 1, call: 1 }, "AJs": { raise: 1, call: 5 },
         "A9s": { raise: 1, call: 5 }, "A8s": { raise: 1, call: 5 }, "A7s": { raise: 1, call: 5 },
-      },
-      SB: {
-        "AQs": { raise: 3, call: 3 }, "AQo": { raise: 2, call: 3 }, "AJs": { raise: 1, call: 5 },
-        "AJo": { raise: 0, call: 5 }, "ATs": { raise: 0, call: 5 }, "ATo": { raise: 0, call: 5 },
-        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 5 },
-        "22": { raise: 0, call: 5 }, "33": { raise: 0, call: 5 }, "44": { raise: 0, call: 5 },
-      },
-      BB: {
-        "AQs": { raise: 2, call: 4 }, "AQo": { raise: 1, call: 5 }, "AJs": { raise: 0, call: 6 },
-        "KQs": { raise: 0, call: 6 }, "44": { raise: 6, call: 0 },
-        "K3o": { raise: 0, call: 4 }, "K2o": { raise: 0, call: 3 },
-        "Q4o": { raise: 0, call: 4 }, "J5o": { raise: 0, call: 4 }, "T5o": { raise: 0, call: 4 },
-        "94o": { raise: 0, call: 4 }, "32s": { raise: 0, call: 6 },
+        "A6s": { raise: 2, call: 4 }, "A5s": { raise: 4, call: 2 }, "A4s": { raise: 4, call: 2 },
+        "A3s": { raise: 1, call: 5 }, "A2s": { raise: 1, call: 5 }, "KJs": { raise: 5, call: 1 },
+        "KTs": { raise: 2, call: 4 }, "K9s": { raise: 2, call: 4 }, "K7s": { raise: 1, call: 5 },
+        "K6s": { raise: 1, call: 5 }, "K5s": { raise: 2, call: 4 }, "K4s": { raise: 1, call: 5 },
+        "K3s": { raise: 1, call: 5 }, "AQo": { raise: 2, call: 4 }, "KQo": { raise: 1, call: 5 },
+        "QTs": { raise: 5, call: 1 }, "Q9s": { raise: 2, call: 4 }, "Q8s": { raise: 2, call: 4 },
+        "Q6s": { raise: 2, call: 4 }, "AJo": { raise: 1, call: 5 }, "KJo": { raise: 1, call: 5 },
+        "QJo": { raise: 1, call: 5 }, "JTs": { raise: 5, call: 1 }, "J9s": { raise: 4, call: 2 },
+        "J8s": { raise: 2, call: 4 }, "J7s": { raise: 1, call: 5 }, "J5s": { raise: 0, call: 5 },
+        "J3s": { raise: 0, call: 4 }, "ATo": { raise: 1, call: 5 }, "KTo": { raise: 1, call: 5 },
+        "TT": { raise: 3, call: 3 }, "T9s": { raise: 5, call: 1 }, "T8s": { raise: 1, call: 5 },
+        "T7s": { raise: 1, call: 5 }, "K9o": { raise: 0, call: 4 }, "Q9o": { raise: 0, call: 1 },
+        "J9o": { raise: 0, call: 2 }, "T9o": { raise: 0, call: 5 }, "99": { raise: 1, call: 5 },
+        "98s": { raise: 1, call: 5 }, "96s": { raise: 1, call: 5 }, "95s": { raise: 0, call: 5 },
+        "98o": { raise: 0, call: 2 }, "87s": { raise: 2, call: 4 }, "84s": { raise: 0, call: 2 },
+        "A7o": { raise: 0, call: 2 }, "87o": { raise: 0, call: 2 }, "76s": { raise: 3, call: 3 },
+        "76o": { raise: 0, call: 2 }, "66": { raise: 1, call: 5 }, "65s": { raise: 2, call: 4 },
+        "A5o": { raise: 1, call: 5 }, "65o": { raise: 0, call: 1 }, "54s": { raise: 3, call: 3 },
+        "A4o": { raise: 0, call: 2 }, "54o": { raise: 0, call: 1 }, "43s": { raise: 2, call: 4 },
+        "32s": { raise: 0, call: 4 },
       },
     },
   },
   BTN: {
-    // Facing BTN's very wide steal (~40% RFI) — SB and BB both defend hard.
-    raiseCore: {
-      SB: ["88+", "AKs", "AKo", "AQs", "AQo", "AJs"],
-      BB: ["77+", "AKs", "AKo", "AQs"],
-    },
-    callCore: {
-      SB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T4s+", "94s+", "84s+", "74s+", "64s+", "54s",
-        "A2o+", "K8o+", "Q8o+", "J8o+", "T8o+",
+    SB: {
+      raise: [
+        "AA", "AKs", "AQs", "AJs", "ATs", "A5s", "A4s", "AKo", "KK", "KQs", "KJs", "KTs", "K9s",
+        "AQo", "KQo", "QQ", "QJs", "QTs", "AJo", "JJ", "JTs", "J9s", "TT", "T9s", "99", "88", "77",
       ],
-      BB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "92s+", "82s+", "72s+", "62s+", "52s+",
-        "42s+", "A2o+", "K4o+", "Q5o+", "J5o+", "T5o+", "94o+", "84o+", "74o+", "64o+",
-      ],
-    },
-    mixes: {
-      SB: {
-        "77": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
-        "KQs": { raise: 1, call: 5 }, "KQo": { raise: 0, call: 6 },
-        "A9o": { raise: 0, call: 5 }, "K7o": { raise: 0, call: 5 }, "Q7o": { raise: 0, call: 5 },
+      call: [],
+      mixes: {
+        "A9s": { raise: 5, call: 1 }, "A8s": { raise: 5, call: 1 }, "A7s": { raise: 5, call: 1 },
+        "A6s": { raise: 1, call: 0 }, "A3s": { raise: 1, call: 1 }, "Q9s": { raise: 3, call: 1 },
+        "KJo": { raise: 3, call: 0 }, "ATo": { raise: 2, call: 1 }, "T8s": { raise: 5, call: 0 },
+        "98s": { raise: 1, call: 0 }, "87s": { raise: 1, call: 0 }, "76s": { raise: 1, call: 0 },
+        "66": { raise: 5, call: 1 }, "65s": { raise: 1, call: 0 }, "55": { raise: 2, call: 1 },
+        "54s": { raise: 1, call: 0 },
       },
-      BB: {
-        "66": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
-        "KQs": { raise: 0, call: 6 }, "KQo": { raise: 0, call: 6 },
-        "K3o": { raise: 0, call: 5 }, "Q4o": { raise: 0, call: 5 }, "J4o": { raise: 0, call: 5 },
-        "T4o": { raise: 0, call: 5 }, "93o": { raise: 0, call: 4 }, "32s": { raise: 0, call: 6 },
+    },
+    BB: {
+      raise: [
+        "AA", "AKs", "AQs", "AJs", "AKo", "KK", "KQs", "AQo", "QQ", "JJ", "JTs", "J9s", "TT", "T9s",
+        "T8s",
+      ],
+      call: [
+        "A9s", "A8s", "A7s", "A3s", "K8s", "K4s", "K2s", "Q7s", "Q5s", "Q4s", "Q3s", "Q2s", "J4s",
+        "J3s", "J2s", "Q9o", "J9o", "86s", "85s", "75s", "74s", "64s", "63s", "53s", "52s", "44",
+        "42s", "33", "22",
+      ],
+      mixes: {
+        "ATs": { raise: 1, call: 5 }, "A6s": { raise: 1, call: 5 }, "A5s": { raise: 5, call: 1 },
+        "A4s": { raise: 2, call: 4 }, "A2s": { raise: 1, call: 5 }, "KJs": { raise: 1, call: 5 },
+        "KTs": { raise: 2, call: 4 }, "K9s": { raise: 2, call: 4 }, "K7s": { raise: 1, call: 5 },
+        "K6s": { raise: 2, call: 4 }, "K5s": { raise: 1, call: 5 }, "K3s": { raise: 1, call: 5 },
+        "KQo": { raise: 2, call: 4 }, "QJs": { raise: 5, call: 1 }, "QTs": { raise: 5, call: 1 },
+        "Q9s": { raise: 4, call: 2 }, "Q8s": { raise: 1, call: 5 }, "Q6s": { raise: 1, call: 5 },
+        "AJo": { raise: 2, call: 4 }, "KJo": { raise: 2, call: 4 }, "QJo": { raise: 1, call: 5 },
+        "J8s": { raise: 2, call: 4 }, "J7s": { raise: 4, call: 2 }, "J6s": { raise: 1, call: 5 },
+        "J5s": { raise: 2, call: 4 }, "ATo": { raise: 1, call: 5 }, "KTo": { raise: 2, call: 4 },
+        "QTo": { raise: 1, call: 5 }, "JTo": { raise: 1, call: 5 }, "T7s": { raise: 3, call: 3 },
+        "T6s": { raise: 2, call: 4 }, "T5s": { raise: 0, call: 4 }, "A9o": { raise: 1, call: 5 },
+        "K9o": { raise: 1, call: 5 }, "T9o": { raise: 1, call: 5 }, "99": { raise: 4, call: 2 },
+        "98s": { raise: 3, call: 3 }, "97s": { raise: 1, call: 5 }, "96s": { raise: 1, call: 5 },
+        "95s": { raise: 0, call: 1 }, "A8o": { raise: 1, call: 5 }, "K8o": { raise: 0, call: 1 },
+        "T8o": { raise: 0, call: 3 }, "98o": { raise: 0, call: 2 }, "88": { raise: 1, call: 5 },
+        "87s": { raise: 3, call: 3 }, "A7o": { raise: 1, call: 5 }, "87o": { raise: 0, call: 2 },
+        "77": { raise: 1, call: 5 }, "76s": { raise: 3, call: 3 }, "A6o": { raise: 0, call: 2 },
+        "76o": { raise: 0, call: 1 }, "66": { raise: 1, call: 5 }, "65s": { raise: 3, call: 3 },
+        "A5o": { raise: 2, call: 4 }, "55": { raise: 1, call: 5 }, "54s": { raise: 3, call: 3 },
+        "A4o": { raise: 1, call: 5 }, "43s": { raise: 1, call: 5 },
       },
     },
   },
   SB: {
-    // BB defending the biggest single price of the hand vs SB's wide open —
-    // the widest calling range in the whole game.
-    raiseCore: {
-      BB: ["66+", "AKs", "AKo", "AQs", "AQo", "AJs"],
-    },
-    callCore: {
-      BB: [
-        "22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "92s+", "82s+", "72s+", "63s+", "53s+", "43s",
-        "A2o+", "K2o+", "Q2o+", "J2o+", "T2o+", "93o+", "83o+", "73o+", "64o+",
+    BB: {
+      raise: [
+        "AA", "AKs", "AQs", "AJs", "A5s", "AKo", "KK", "KQs", "KJs", "AQo", "QQ", "QJs", "JJ", "TT",
+        "T9s",
       ],
-    },
-    mixes: {
-      BB: {
-        "55": { raise: 0, call: 6 }, "AJo": { raise: 0, call: 6 }, "ATs": { raise: 0, call: 6 },
-        "KQs": { raise: 0, call: 6 }, "KQo": { raise: 0, call: 6 },
-        "K6o": { raise: 0, call: 3 }, "Q7o": { raise: 0, call: 3 }, "J7o": { raise: 0, call: 3 },
-        "T7o": { raise: 0, call: 3 }, "96o": { raise: 0, call: 3 },
-        "65o": { raise: 0, call: 3 }, "54o": { raise: 0, call: 3 }, "42s": { raise: 0, call: 6 },
+      call: [
+        "A9s", "A8s", "A7s", "A6s", "A2s", "K9s", "K8s", "K7s", "K6s", "K5s", "K4s", "K3s", "K2s",
+        "Q9s", "Q8s", "Q7s", "Q6s", "Q5s", "Q2s", "KJo", "QJo", "J9s", "J8s", "ATo", "JTo", "T8s",
+        "T7s", "A9o", "97s", "96s", "86s", "85s", "87o", "75s", "74s", "73s", "64s", "63s", "53s",
+        "52s", "44", "43s", "42s", "33", "32s", "22",
+      ],
+      mixes: {
+        "ATs": { raise: 5, call: 1 }, "A4s": { raise: 4, call: 2 }, "A3s": { raise: 1, call: 5 },
+        "KTs": { raise: 4, call: 2 }, "KQo": { raise: 1, call: 5 }, "QTs": { raise: 4, call: 2 },
+        "Q4s": { raise: 1, call: 5 }, "Q3s": { raise: 1, call: 5 }, "AJo": { raise: 1, call: 5 },
+        "JTs": { raise: 5, call: 1 }, "J7s": { raise: 1, call: 5 }, "J6s": { raise: 3, call: 3 },
+        "J5s": { raise: 3, call: 3 }, "J4s": { raise: 3, call: 3 }, "J3s": { raise: 1, call: 5 },
+        "J2s": { raise: 2, call: 4 }, "KTo": { raise: 1, call: 5 }, "QTo": { raise: 1, call: 5 },
+        "T6s": { raise: 5, call: 1 }, "T5s": { raise: 3, call: 3 }, "T4s": { raise: 4, call: 2 },
+        "T3s": { raise: 2, call: 4 }, "T2s": { raise: 2, call: 4 }, "K9o": { raise: 2, call: 4 },
+        "Q9o": { raise: 2, call: 4 }, "J9o": { raise: 2, call: 4 }, "T9o": { raise: 1, call: 5 },
+        "99": { raise: 4, call: 2 }, "98s": { raise: 5, call: 1 }, "95s": { raise: 3, call: 3 },
+        "A8o": { raise: 1, call: 5 }, "K8o": { raise: 4, call: 2 }, "Q8o": { raise: 3, call: 3 },
+        "J8o": { raise: 3, call: 3 }, "T8o": { raise: 3, call: 3 }, "98o": { raise: 1, call: 5 },
+        "88": { raise: 2, call: 4 }, "87s": { raise: 5, call: 1 }, "84s": { raise: 1, call: 5 },
+        "A7o": { raise: 3, call: 3 }, "K7o": { raise: 3, call: 3 }, "T7o": { raise: 1, call: 0 },
+        "97o": { raise: 1, call: 1 }, "77": { raise: 1, call: 5 }, "76s": { raise: 5, call: 1 },
+        "A6o": { raise: 3, call: 3 }, "K6o": { raise: 2, call: 1 }, "76o": { raise: 0, call: 5 },
+        "66": { raise: 2, call: 4 }, "65s": { raise: 3, call: 3 }, "A5o": { raise: 1, call: 5 },
+        "K5o": { raise: 1, call: 0 }, "65o": { raise: 0, call: 4 }, "55": { raise: 1, call: 5 },
+        "54s": { raise: 4, call: 2 }, "A4o": { raise: 2, call: 4 }, "54o": { raise: 0, call: 3 },
+        "A3o": { raise: 2, call: 4 }, "A2o": { raise: 4, call: 2 },
       },
     },
   },
 };
 
-type SeatSets = Partial<Record<AnySeat, { raise: Set<string>; call: Set<string> }>>;
-
-const VS_SETS: Partial<Record<Position, SeatSets>> = Object.fromEntries(
-  Object.entries(VS_DATA).map(([opener, data]) => [
-    opener,
-    Object.fromEntries(
-      SEATS.map((seat) => [
-        seat,
-        {
-          raise: expandRange(data!.raiseCore[seat] ?? []),
-          call: expandRange(data!.callCore[seat] ?? []),
-        },
-      ])
-    ),
-  ])
-);
-
-/** Openers we currently have facing-ranges for. */
+const VS_SETS = new Map<string, { raise: Set<string>; call: Set<string> }>();
+for (const [opener, heroes] of Object.entries(VS_DATA)) {
+  for (const [hero, spot] of Object.entries(heroes)) {
+    VS_SETS.set(`${opener}/${hero}`, { raise: new Set(spot.raise), call: new Set(spot.call) });
+  }
+}
 export const VS_OPENERS: Position[] = Object.keys(VS_DATA) as Position[];
 
 /** Seats that can face an open from `opener` (everyone who acts after them). */
@@ -447,15 +561,15 @@ export function heroesFacing(opener: Position): AnySeat[] {
 /** {raise, call} in sixths for `hero` facing an open from `opener`.
  *  Fold is whatever sixths remain (6 - raise - call). */
 export function vsOpenSixths(hero: AnySeat, opener: Position, hand: string): Facing {
-  const data = VS_DATA[opener];
-  const sets = VS_SETS[opener]?.[hero];
-  if (!data || !sets) return { raise: 0, call: 0 }; // no data for this opener yet
+  const spot = VS_DATA[opener]?.[hero];
+  const sets = VS_SETS.get(`${opener}/${hero}`);
+  if (!spot || !sets) return { raise: 0, call: 0 }; // no chart for this pair
 
-  const override = data.mixes[hero]?.[hand];
-  if (override) return override;
+  const mix = spot.mixes[hand];
+  if (mix) return mix;
   if (sets.raise.has(hand)) return { raise: 6, call: 0 };
   if (sets.call.has(hand)) return { raise: 0, call: 6 };
-  return { raise: 0, call: 0 };
+  return { raise: 0, call: 0 }; // in neither list: hero folds
 }
 
 export function isVsOpenMixed(hero: AnySeat, opener: Position, hand: string): boolean {
