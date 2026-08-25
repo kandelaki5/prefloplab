@@ -10,6 +10,7 @@ import {
 } from "@/lib/ranges";
 import { PlayingCard } from "@/components/PlayingCard";
 import { Table6Max } from "@/components/Table6Max";
+import { Logo } from "@/components/Logo";
 import { Dice } from "@/components/Dice";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
@@ -209,7 +210,10 @@ export default function TrainerPage() {
   if (!mode) {
     return (
       <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-10 sm:px-6">
-        <h1 className="text-3xl sm:text-5xl font-bold mb-2">Preflop Solver</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <Logo className="w-12 h-12 sm:w-16 sm:h-16" />
+          <h1 className="text-3xl sm:text-5xl font-bold">Preflop Solver</h1>
+        </div>
         <p className="text-gray-400 mb-10 text-sm sm:text-base">Pick what you want to drill.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
@@ -242,21 +246,22 @@ export default function TrainerPage() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center px-3 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-10">
 
-      <h1 className="text-3xl sm:text-5xl font-bold mb-1">Preflop Solver</h1>
+      <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
+        <Logo className="w-10 h-10 sm:w-14 sm:h-14" />
+        <h1 className="text-3xl sm:text-5xl font-bold">Preflop Solver</h1>
+      </div>
       <button onClick={backToMenu} className="text-xs text-gray-500 hover:text-[#d3ac47] mb-6 underline underline-offset-2">
         {MODES.find((m) => m.mode === mode)?.label} — change mode
       </button>
 
-      {/* TABLE + DIE — side by side when there is room, die on the felt when
-          there isn't (a phone has no width to spare next to the table). */}
-      <div className="flex w-full items-center justify-center gap-8 mb-6 sm:mb-2">
+      {/* TABLE — the die sits on the felt, where a real one would be. */}
+      <div className="flex w-full items-center justify-center mb-6 sm:mb-4">
         <Table6Max
           hero={scenario.hero}
           opener={scenario.kind === "vs" ? scenario.opener : scenario.kind === "vs3bet" ? scenario.threebettor : undefined}
         >
-          <Dice value={die} className="w-11 h-11 sm:hidden" />
+          <Dice value={die} className="w-11 h-11 sm:w-14 sm:h-14" />
         </Table6Max>
-        <Dice value={die} className="hidden sm:block sm:w-16 sm:h-16" />
       </div>
 
       {/* CONTEXT */}
