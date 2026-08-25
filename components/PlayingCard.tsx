@@ -18,11 +18,9 @@ export function PlayingCard({ card }: { card: string }) {
   return (
     <svg
       viewBox="0 0 80 112"
-      width="80"
-      height="112"
       role="img"
       aria-label={`${label} of ${suit}`}
-      className="drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
+      className="w-16 h-[89.6px] sm:w-20 sm:h-28 shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
     >
       <defs>
         <linearGradient id={`face-${rank}${suit}`} x1="0" y1="0" x2="0" y2="1">
