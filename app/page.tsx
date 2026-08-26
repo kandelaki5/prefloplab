@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import {
   ALL_HANDS, HAND_GRID, POSITIONS, VS_OPENERS, VS3BET_OPENERS,
   comboCount, isMixed, raiseSixths, resolveAction,
@@ -228,6 +229,13 @@ export default function TrainerPage() {
             </button>
           ))}
         </div>
+
+        <Link
+          href="/randomizer"
+          className="mt-6 text-xs text-gray-500 underline underline-offset-2 hover:text-[#d3ac47]"
+        >
+          Randomizer — a 0–100 number on top of your table
+        </Link>
       </main>
     );
   }
