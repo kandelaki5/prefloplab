@@ -254,6 +254,16 @@ export function Randomizer() {
         3-bet 30% of the time: 3-bet when the number is under 30, flat when it is not.
       </p>
 
+      {/* A browser window cannot stay above a poker client running full
+          screen; a native one can. */}
+      <a
+        href="/PrefLopLab-Randomizer.exe"
+        download
+        className="text-xs text-gray-500 underline underline-offset-2 hover:text-[#d3ac47]"
+      >
+        Download the Windows app (65 KB, nothing to install)
+      </a>
+
       {pipWindow &&
         createPortal(
           <div className="h-full w-full">
