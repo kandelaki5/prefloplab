@@ -15,8 +15,8 @@
 #define TIMER_ID      1
 #define TICK_MS       50      /* how often the countdown bar redraws */
 #define INTERVAL_MS   10000   /* how long a number stays up */
-#define MIN_W         120
-#define MIN_H         100
+#define MIN_W         120   /* also the size it opens at */
+#define MIN_H         90
 #define GRIP          16      /* size of the resize corner, in pixels */
 
 #define IDM_REROLL    100
@@ -28,7 +28,6 @@ static const COLORREF GOLD      = RGB(211, 172,  71);
 static const COLORREF GOLD_DIM  = RGB(120,  98,  41);
 static const COLORREF FELT_TOP  = RGB( 34, 133,  85);
 static const COLORREF FELT_BOT  = RGB(  9,  42,  26);
-static const COLORREF HINT      = RGB(118, 168, 140);
 static const COLORREF TRACK     = RGB(  6,  26,  16);
 
 static int       g_value    = 0;
@@ -36,7 +35,6 @@ static ULONGLONG g_deadline = 0;
 static BOOL      g_topmost  = TRUE;
 
 static HFONT   g_numberFont = NULL;
-static HFONT   g_hintFont   = NULL;
 static HDC     g_feltDC     = NULL;   /* the gradient, painted once per resize */
 static HBITMAP g_feltBmp    = NULL;
 static HDC     g_backDC     = NULL;   /* what a frame is composed into */
@@ -134,25 +132,18 @@ static void Resize(HWND hwnd)
     }
 
     if (g_numberFont) DeleteObject(g_numberFont);
-    if (g_hintFont)   DeleteObject(g_hintFont);
 
-    size = h * 46 / 100;
-    if (size > w * 30 / 100)
-        size = w * 30 / 100;
+    /* "100" is about 1.7 times as wide as the font is tall, so the width
+     * cap is what actually binds on a window dragged narrow. */
+    size = h * 78 / 100;
+    if (size > w * 52 / 100)
+        size = w * 52 / 100;
     if (size < 8)
         size = 8;
 
     g_numberFont = CreateFontW(-size, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
                                DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
                                CLEARTYPE_QUALITY, VARIABLE_PITCH, L"Segoe UI");
-
-    size = h * 8 / 100;
-    if (size < 9)  size = 9;
-    if (size > 13) size = 13;
-
-    g_hintFont = CreateFontW(-size, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
-                             DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
-                             CLEARTYPE_QUALITY, VARIABLE_PITCH, L"Segoe UI");
 }
 
 static void Paint(HWND hwnd)
@@ -181,19 +172,13 @@ static void Paint(HWND hwnd)
 
     SetBkMode(g_backDC, TRANSPARENT);
 
-    /* The number, held slightly above centre to leave the hint its room. */
+    /* The number has the window to itself, centred in what the countdown
+     * bar leaves. */
     SelectObject(g_backDC, g_numberFont);
     SetTextColor(g_backDC, GOLD);
     wsprintfW(text, L"%d", g_value);
-    SetRect(&area, 0, 0, w, h - h / 7);
+    SetRect(&area, 0, 0, w, h - barH);
     DrawTextW(g_backDC, text, -1, &area, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
-
-    SelectObject(g_backDC, g_hintFont);
-    SetTextColor(g_backDC, HINT);
-    SetTextCharacterExtra(g_backDC, 2);
-    SetRect(&area, 0, h - h / 4, w, h - barH - 4);
-    DrawTextW(g_backDC, L"CLICK TO REROLL", -1, &area, DT_CENTER | DT_BOTTOM | DT_SINGLELINE);
-    SetTextCharacterExtra(g_backDC, 0);
 
     /* Countdown to the automatic reroll. */
     now = GetTickCount64();
@@ -414,7 +399,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmdline, int show)
     HWND        hwnd;
     MSG         msg;
     RECT        work;
-    int         w = 210, h = 180, x, y;
+    int         w = MIN_W, h = MIN_H, x, y;   /* opens small; drag the corner to grow it */
 
     (void)prev; (void)cmdline;
 
