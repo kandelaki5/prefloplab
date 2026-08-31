@@ -1,0 +1,54 @@
+# Builds the TableLab desktop app on a real Windows runner.
+#
+# A Windows host is what produces a properly branded executable: the icon and
+# file-version resources are written with rcedit, which needs Windows (or wine)
+# to run. Building on Linux works but leaves the stock Electron icon on the exe,
+# so the downloadable builds come from here.
+name: TableLab (Windows)
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/tablelab-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # The same 51 tests as on Linux, but here they run against the Windows
+      # build of Node — worth knowing before we ship an installer.
+      - name: Test
+        run: npm test
+
+      - name: Build installer and portable exe
+        run: npm run dist:win
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: TableLab-windows-x64
+          path: |
+            desktop/release/*.exe
+          if-no-files-found: error
+          retention-days: 60

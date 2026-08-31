@@ -12,7 +12,8 @@
     "start": "npm run build && electron .",
     "dev": "npm run build && cross-env TABLELAB_BACKEND=mock electron .",
     "test": "npm run build && node --test \"dist/test/**/*.test.js\"",
-    "dist:win": "npm run build && electron-builder --win --x64"
+    "dist:win": "npm run build && npm run prepare:win-native && electron-builder --win --x64",
+    "prepare:win-native": "node scripts/fetch-win-native.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -27,20 +28,53 @@
   "build": {
     "appId": "com.prefloplab.tablelab",
     "productName": "TableLab",
+    "copyright": "TableLab",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
     "files": [
       "dist/**/*",
-      "assets/**/*",
-      "package.json"
+      "!dist/**/*.map",
+      "!dist/test/**",
+      "assets/icon.png",
+      "package.json",
+      "!node_modules/@koromix/koffi-linux-*/**",
+      "!node_modules/@koromix/koffi-darwin-*/**",
+      "!node_modules/@koromix/koffi-freebsd-*/**",
+      "!node_modules/@koromix/koffi-openbsd-*/**"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "**/node_modules/@koromix/**"
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "TableLab-Setup-${version}.${ext}",
+      "shortcutName": "TableLab"
+    },
+    "portable": {
+      "artifactName": "TableLab-${version}-portable.${ext}"
     }
   }
 }

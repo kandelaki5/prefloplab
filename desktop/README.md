@@ -21,7 +21,32 @@ npm run dist:win   # build a Windows installer + portable exe
 ```
 
 Node 20+ is required to build. The Windows build needs no compiler: window
-management goes through [koffi](https://koffi.dev), which ships prebuilt.
+management goes through [koffi](https://koffi.dev), which ships prebuilt
+binaries as one package per platform.
+
+### Getting a downloadable .exe
+
+**From CI (recommended).** Every push that touches `desktop/` runs
+[the Windows workflow](../.github/workflows/tablelab-windows.yml) on a
+`windows-latest` runner: it typechecks, runs the tests against Windows Node, and
+builds both artifacts. Download them from the run's *Artifacts* section
+(`TableLab-windows-x64`) — `TableLab-Setup-0.1.0.exe` to install, or
+`TableLab-0.1.0-portable.exe` to run with no installation.
+
+**Locally on Windows.** `npm run dist:win` produces the same two files in
+`release/`.
+
+**Locally on Linux or macOS.** Cross-building mostly works —
+`npm run prepare:win-native` fetches the Windows koffi binary that npm refuses
+to install on a foreign platform — but two steps shell out to Windows
+executables and therefore need wine:
+
+- writing the icon and version resources into the exe (`rcedit`), and
+- generating the NSIS uninstaller, which is built by *running* the installer.
+
+Without wine, add `-c.win.signAndEditExecutable=false` and build the `portable`
+target only; the result runs fine but carries the stock Electron file icon.
+This is why the downloadable builds come from the Windows runner.
 
 ## How it works
 
