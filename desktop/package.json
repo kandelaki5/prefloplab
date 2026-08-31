@@ -1,0 +1,46 @@
+{
+  "name": "tablelab",
+  "productName": "TableLab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Poker table manager \u2014 finds your poker client windows and arranges them into layouts.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && cross-env TABLELAB_BACKEND=mock electron .",
+    "test": "npm run build && node --test \"dist/test/**/*.test.js\"",
+    "dist:win": "npm run build && electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^44.0.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.2"
+  },
+  "optionalDependencies": {
+    "koffi": "^3.1.6"
+  },
+  "build": {
+    "appId": "com.prefloplab.tablelab",
+    "productName": "TableLab",
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

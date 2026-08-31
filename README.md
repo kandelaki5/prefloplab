@@ -1,5 +1,14 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## What is in here
+
+- **`app/`, `components/`, `lib/`** — PrefLopLab, the preflop range trainer (Next.js).
+- **`desktop/`** — [TableLab](desktop/README.md), a Windows poker table manager:
+  it finds your client's table windows and arranges them into layouts you
+  design, with global hotkeys for arranging and switching tables. It is a
+  separate Electron app with its own toolchain; `npm` commands at the repo root
+  do not touch it.
+
 ## Getting Started
 
 First, run the development server:
