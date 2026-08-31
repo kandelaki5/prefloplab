@@ -26,14 +26,44 @@ export const BUILTIN_PROFILES: SiteProfile[] = [
     aspectRatio: 4 / 3,
   },
   {
+    // GG's client is Qt-based and its table windows are owned by the main
+    // window, so they only show up at all now that owned windows are kept.
+    // The title format varies by skin and by client version, so this profile
+    // leans on the process and class and matches titles permissively; if it
+    // still misses, the Windows tab will show what the real titles are.
     id: 'ggpoker',
     name: 'GGPoker / GGNetwork',
     enabled: true,
-    processNames: ['ggpoker.exe', 'ggpokeruk.exe', 'ggpokerok.exe', 'natural8.exe', 'clubgg.exe'],
-    classPatterns: [],
-    tablePatterns: ['Hold\\s?em', 'Omaha', 'Rush ?& ?Cash', 'Blinds?\\s*:', '\\bNLH?\\b'],
-    lobbyPatterns: ['Lobby', 'Cashier', '^GGPoker$'],
-    excludePatterns: ['Chat', 'Notification'],
+    processNames: [
+      'ggpoker.exe',
+      'ggpokeruk.exe',
+      'ggpokerok.exe',
+      'ggpokerca.exe',
+      'natural8.exe',
+      'clubgg.exe',
+      'betkings.exe',
+    ],
+    classPatterns: ['^Qt\\d*QWindowIcon$', '^Qt\\d*QWindow'],
+    tablePatterns: [
+      'Hold\\s?em', 'Omaha', 'Rush ?& ?Cash', 'Blinds?\\s*:', '\\bNLH?\\b', '\\bPLO\\b',
+      'Spin ?& ?Gold', 'Table', '\\d+/\\d+',
+    ],
+    lobbyPatterns: ['^Lobby$', 'Cashier', '^GGPoker$', '^Natural8$', '^ClubGG$'],
+    excludePatterns: ['Chat', 'Notification', 'Update'],
+    tableKeyPattern: null,
+    aspectRatio: 16 / 10,
+  },
+  {
+    // CoinPoker ships an Electron client, so every window is a Chromium
+    // widget host and the table windows are owned by the main window.
+    id: 'coinpoker',
+    name: 'CoinPoker',
+    enabled: true,
+    processNames: ['coinpoker.exe', 'coin poker.exe'],
+    classPatterns: ['^Chrome_WidgetWin_\\d+$'],
+    tablePatterns: ['Table', 'Hold', 'Omaha', 'Blinds', '\\d+/\\d+', 'NLH', 'PLO'],
+    lobbyPatterns: ['^CoinPoker$', 'Lobby', 'Cashier'],
+    excludePatterns: ['Chat', 'Settings', 'Update'],
     tableKeyPattern: null,
     aspectRatio: 16 / 10,
   },
@@ -152,47 +182,96 @@ export interface ClassifyOptions {
   minSize?: { width: number; height: number };
 }
 
-/** Decide whether a window is a poker table, a lobby, or none of our business. */
+/**
+ * Decide whether a window is a poker table, a lobby, or none of our business.
+ *
+ * Order matters. Lobby titles are checked before the window class, because on
+ * an Electron or Qt client every window shares one class ("Chrome_WidgetWin_1",
+ * "Qt5152QWindowIcon") — the class tells you the toolkit, not the purpose, so
+ * without this the lobby would be tiled as if it were a table.
+ *
+ * Every "no" carries a reason. A window quietly failing to match, with nothing
+ * on screen to say why, is the failure mode that makes a tool like this
+ * impossible to debug from the outside.
+ */
 export function classifyWindow(
   win: WindowInfo,
   profiles: SiteProfile[],
   options: ClassifyOptions = {},
 ): Classification {
-  const none: Classification = { kind: 'other', siteId: null, tableKey: null };
-  if (!win.visible || !win.title.trim()) return none;
+  const none = (reason: string): Classification => ({ kind: 'other', siteId: null, tableKey: null, reason });
+
+  if (!win.visible) return none('not visible');
+  if (!win.title.trim()) return none('no window title');
+  if (win.toolWindow) return none('tool window (WS_EX_TOOLWINDOW)');
+  if (win.cloaked) return none('cloaked — alive but not on screen');
 
   const minSize = options.minSize ?? MIN_TABLE_SIZE;
   const process = win.processName.toLowerCase();
+  const enabled = profiles.filter((p) => p.enabled);
+  if (enabled.length === 0) return none('every site profile is switched off');
 
-  for (const profile of profiles) {
-    if (!profile.enabled) continue;
+  let sawProcess = false;
+
+  for (const profile of enabled) {
     if (profile.processNames.length > 0 && !profile.processNames.includes(process)) continue;
-    if (profile.excludePatterns.length > 0 && anyMatch(profile.excludePatterns, win.title)) continue;
+    sawProcess = true;
+
+    if (profile.excludePatterns.length > 0 && anyMatch(profile.excludePatterns, win.title)) {
+      return none(`excluded by ${profile.name}`);
+    }
+
+    if (anyMatch(profile.lobbyPatterns, win.title)) {
+      return { kind: 'lobby', siteId: profile.id, tableKey: null };
+    }
 
     const classMatch = profile.classPatterns.length > 0 && anyMatch(profile.classPatterns, win.className);
-    const lobbyMatch = anyMatch(profile.lobbyPatterns, win.title);
     const titleMatch = anyMatch(profile.tablePatterns, win.title);
+    if (!classMatch && !titleMatch) continue;
 
-    // The window class is authoritative when a profile defines one: it survives
-    // every title rename the client can throw at us.
-    if (classMatch) {
-      return { kind: 'table', siteId: profile.id, tableKey: normalizeTableKey(win.title, profile) };
+    // Too small to be a table even though it looked like one. Chat popups,
+    // tournament registration dialogs and toasts all land here.
+    if (!win.minimized && (win.bounds.width < minSize.width || win.bounds.height < minSize.height)) {
+      return none(`matched ${profile.name} but is only ${Math.round(win.bounds.width)}x${Math.round(win.bounds.height)}`);
     }
-    if (lobbyMatch) return { kind: 'lobby', siteId: profile.id, tableKey: null };
-    if (!titleMatch) continue;
 
-    // Too small to be a table even though the title looked right.
-    if (win.bounds.width < minSize.width || win.bounds.height < minSize.height) {
-      return { kind: 'other', siteId: profile.id, tableKey: null };
-    }
-    if (win.minimized) {
-      // Minimized tables still count — we just cannot place them until restored.
-      return { kind: 'table', siteId: profile.id, tableKey: normalizeTableKey(win.title, profile) };
-    }
     return { kind: 'table', siteId: profile.id, tableKey: normalizeTableKey(win.title, profile) };
   }
 
-  return none;
+  return none(sawProcess ? 'no profile pattern matched this title or class' : `no profile covers ${process || 'this process'}`);
+}
+
+/**
+ * Build a site profile from a window the user pointed at.
+ *
+ * This is the escape hatch from guesswork: rather than me predicting a client's
+ * title format, the user clicks "This is a table" on the real window and we
+ * key on what is actually there. Process plus window class is specific enough
+ * to be safe and general enough to keep matching after the client renames the
+ * title, which it will.
+ */
+export function profileFromWindow(win: WindowInfo, name?: string): SiteProfile {
+  const process = win.processName.toLowerCase();
+  const id = `learned-${(process || win.className || 'window').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+  return {
+    id,
+    name: name ?? `${process || win.className || 'Custom'} (learned)`,
+    enabled: true,
+    processNames: process ? [process] : [],
+    classPatterns: win.className ? [`^${escapeRegex(win.className)}$`] : [],
+    // Anything from this process and class, of table size, counts. Narrow it
+    // in the Sites tab if the client's other windows start getting caught.
+    tablePatterns: ['.'],
+    lobbyPatterns: [],
+    excludePatterns: [],
+    tableKeyPattern: null,
+    aspectRatio: null,
+    learned: true,
+  };
+}
+
+export function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function profileById(profiles: SiteProfile[], id: string | null): SiteProfile | null {

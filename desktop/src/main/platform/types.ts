@@ -5,6 +5,16 @@ export interface SetBoundsOptions {
   activate?: boolean;
   /** Restore a minimized window first — you cannot position an icon. */
   restore?: boolean;
+  /** Move without resizing, for clients that insist on their own size. */
+  moveOnly?: boolean;
+}
+
+export interface MoveResult {
+  ok: boolean;
+  /** Raw Win32 error, when there was one. */
+  errorCode?: number;
+  /** The same thing in words, ready to show in the UI. */
+  message?: string;
 }
 
 /**
@@ -24,10 +34,20 @@ export interface DesktopBackend {
 
   listDisplays(): DisplayInfo[];
   listWindows(): WindowInfo[];
-  setWindowBounds(id: string, rect: Rect, options?: SetBoundsOptions): boolean;
+  /**
+   * The current bounds of one window.
+   *
+   * Read straight after a move: it is how we find out whether the client
+   * actually accepted it, rather than trusting an API that reports success for
+   * a request it merely queued.
+   */
+  getWindowBounds(id: string): Rect | null;
+  setWindowBounds(id: string, rect: Rect, options?: SetBoundsOptions): MoveResult;
   focusWindow(id: string): boolean;
   restoreWindow(id: string): boolean;
   minimizeWindow(id: string): boolean;
   getForegroundWindow(): string | null;
+  /** Facts worth putting in a bug report. */
+  environment?(): { elevated: boolean; note?: string };
   dispose?(): void;
 }

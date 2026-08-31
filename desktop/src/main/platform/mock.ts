@@ -8,7 +8,7 @@
  * they rename themselves the way a real client does between hands.
  */
 import type { DisplayInfo, Rect, WindowInfo } from '../../core/types';
-import type { DesktopBackend, SetBoundsOptions } from './types';
+import type { DesktopBackend, MoveResult, SetBoundsOptions } from './types';
 
 interface MockWindow extends WindowInfo {
   /** Renamed on a timer to mimic a client rewriting stack sizes into the title. */
@@ -76,13 +76,23 @@ export class MockBackend implements DesktopBackend {
     return { ...rest, bounds: { ...win.bounds } };
   }
 
-  setWindowBounds(id: string, rect: Rect, options: SetBoundsOptions = {}): boolean {
+  getWindowBounds(id: string): Rect | null {
     const win = this.windows.get(id);
-    if (!win) return false;
+    return win ? { ...win.bounds } : null;
+  }
+
+  setWindowBounds(id: string, rect: Rect, options: SetBoundsOptions = {}): MoveResult {
+    const win = this.windows.get(id);
+    if (!win) return { ok: false, message: 'the window no longer exists' };
     if (win.minimized && options.restore !== false) win.minimized = false;
-    win.bounds = { ...rect };
+    // A simulated fixed-size client keeps its own size, exactly like the real
+    // ones that ignore a resize — that path needs to be exercisable off Windows.
+    const keepSize = options.moveOnly || !win.resizable;
+    win.bounds = keepSize
+      ? { x: rect.x, y: rect.y, width: win.bounds.width, height: win.bounds.height }
+      : { ...rect };
     if (options.activate) this.foreground = id;
-    return true;
+    return { ok: true };
   }
 
   focusWindow(id: string): boolean {
@@ -111,9 +121,13 @@ export class MockBackend implements DesktopBackend {
     return this.foreground;
   }
 
+  environment(): { elevated: boolean; note?: string } {
+    return { elevated: false, note: 'simulated desktop' };
+  }
+
   // --- simulator controls, exposed to the renderer in mock mode -------------
 
-  spawnTable(siteId?: string): WindowInfo {
+  spawnTable(siteId?: string, fixedSize = false): WindowInfo {
     const spec = siteId ? SITES.find((s) => s.site === siteId) ?? SITES[0]! : pick(SITES);
     const display = this.displays[0]!;
     const title = spec.name();
@@ -134,6 +148,13 @@ export class MockBackend implements DesktopBackend {
       },
       minimized: false,
       visible: true,
+      pid: 4000 + (Number(id) % 900),
+      // Owned by the lobby, the way Electron and Qt clients really do it.
+      owned: true,
+      ownerId: null,
+      toolWindow: false,
+      cloaked: false,
+      resizable: !fixedSize,
     };
     this.windows.set(id, win);
     return this.snapshot(win);
@@ -151,6 +172,12 @@ export class MockBackend implements DesktopBackend {
       bounds: { x: 40, y: 40, width: 1100, height: 760 },
       minimized: false,
       visible: true,
+      pid: 4000 + (Number(id) % 900),
+      owned: false,
+      ownerId: null,
+      toolWindow: false,
+      cloaked: false,
+      resizable: true,
     };
     this.windows.set(id, win);
     return this.snapshot(win);

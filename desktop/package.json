@@ -1,7 +1,7 @@
 {
   "name": "tablelab",
   "productName": "TableLab",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Poker table manager \u2014 finds your poker client windows and arranges them into layouts.",
   "main": "dist/main/main.js",

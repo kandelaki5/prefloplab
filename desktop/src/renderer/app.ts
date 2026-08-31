@@ -12,11 +12,12 @@ declare global {
 
 const api = window.tablelab;
 
-type Tab = 'tables' | 'layouts' | 'sites' | 'hotkeys' | 'settings';
+type Tab = 'tables' | 'layouts' | 'windows' | 'sites' | 'hotkeys' | 'settings';
 
 const TABS: { id: Tab; label: string; hint: string }[] = [
   { id: 'tables', label: 'Tables', hint: 'What is open and where it sits' },
   { id: 'layouts', label: 'Layouts', hint: 'Build and edit table layouts' },
+  { id: 'windows', label: 'Windows', hint: 'Every window, and why' },
   { id: 'sites', label: 'Sites', hint: 'How windows are recognised' },
   { id: 'hotkeys', label: 'Hotkeys', hint: 'Global shortcuts' },
   { id: 'settings', label: 'Settings', hint: 'Behaviour and backend' },
@@ -31,6 +32,8 @@ const ui = {
   selectedSlotId: null as string | null,
   capturing: null as HotkeyAction | null,
   notice: null as string | null,
+  windowSearch: '',
+  showAllWindows: false,
 };
 
 const root = document.getElementById('app') as HTMLElement;
@@ -118,8 +121,11 @@ function renderContent(): HTMLElement {
     main.append(h('div', { class: 'empty', text: 'Starting up…' }));
     return main;
   }
+  const issues = renderIssues();
+  if (issues) main.append(issues);
   if (ui.tab === 'tables') main.append(renderTablesView());
   else if (ui.tab === 'layouts') main.append(renderLayoutsView());
+  else if (ui.tab === 'windows') main.append(renderWindowsView());
   else if (ui.tab === 'sites') main.append(renderSitesView());
   else if (ui.tab === 'hotkeys') main.append(renderHotkeysView());
   else main.append(renderSettingsView());
@@ -142,6 +148,27 @@ function renderStatusBar(): HTMLElement {
     ui.notice ? h('span', { class: 'notice', text: ui.notice }) : null,
     state?.lastError ? h('span', { class: 'error', text: state.lastError }) : null,
     h('span', { class: 'muted', text: `${state?.tables.length ?? 0} tables` }),
+  );
+}
+
+/**
+ * The banner that turns a silent failure into a next step.
+ *
+ * Nothing here is decorative: it appears only when a table would not move, when
+ * window management is unavailable, or when a poker client is on screen and no
+ * profile claims it — the three ways this app can look broken while working.
+ */
+function renderIssues(): HTMLElement | null {
+  const issues = ui.state?.issues ?? [];
+  if (issues.length === 0) return null;
+  return h(
+    'div',
+    { class: 'banner' },
+    h('div', { class: 'banner-body' }, ...issues.map((text) => h('p', { class: 'banner-line', text }))),
+    button('Open Windows tab', () => {
+      ui.tab = 'windows';
+      render();
+    }),
   );
 }
 
@@ -231,6 +258,12 @@ function renderTableList(): HTMLElement {
           { class: 'table-main' },
           h('span', { class: 'table-title', text: table.title }),
           h('span', { class: 'table-meta', text: `${table.siteName} · ${formatRect(table.bounds)}${table.minimized ? ' · minimized' : ''}` }),
+          table.status && table.status !== 'placed'
+            ? h('span', {
+                class: `window-status is-${table.status}`,
+                text: table.statusDetail ?? statusText(table.status),
+              })
+            : null,
         ),
         h(
           'span',
@@ -252,10 +285,11 @@ function renderSimulator(): HTMLElement {
     h('p', { class: 'muted small', text: 'This machine is not Windows, so TableLab is driving a simulated desktop. Everything below behaves like a real client: tables open in random places, rename themselves, and get arranged by the same code path.' }),
     h(
       'div',
-      { class: 'row' },
+      { class: 'row wrap' },
       button('Open table (PokerStars)', () => void api.mock('spawnTable', 'pokerstars')),
       button('Open table (GGPoker)', () => void api.mock('spawnTable', 'ggpoker')),
       button('Open table (partypoker)', () => void api.mock('spawnTable', 'partypoker')),
+      button('Open fixed-size table', () => void api.mock('spawnFixedTable', 'coinpoker')),
       button('Rename tables', () => void api.mock('churn')),
       button('Close all tables', () => void api.mock('closeAll'), 'danger'),
     ),
@@ -576,6 +610,152 @@ function normalizeDraft(layout: Layout): Layout {
   return { ...layout, slots };
 }
 
+// --- windows (the inspector) -----------------------------------------------
+
+const KIND_LABEL: Record<string, string> = { table: 'Table', lobby: 'Lobby', other: '—' };
+
+/**
+ * Every top-level window on the desktop, with the verdict on each.
+ *
+ * This exists because guessing a client's window titles from the outside does
+ * not work: they differ by skin, by version and by game type. Rather than
+ * predict them, show what is actually on screen and let one click turn a real
+ * window into a matching rule.
+ */
+function renderWindowsView(): HTMLElement {
+  const state = ui.state!;
+  const search = ui.windowSearch.trim().toLowerCase();
+
+  const interesting = (win: (typeof state.windows)[number]) =>
+    !win.toolWindow && !win.cloaked && win.bounds.width >= 300 && win.bounds.height >= 200;
+
+  const rows = state.windows
+    .filter((win) => (ui.showAllWindows ? true : interesting(win) || win.kind !== 'other'))
+    .filter((win) =>
+      search.length === 0
+        ? true
+        : `${win.title} ${win.processName} ${win.className}`.toLowerCase().includes(search),
+    );
+
+  const searchInput = h('input', {
+    class: 'input',
+    type: 'search',
+    placeholder: 'Filter by title, process or class…',
+    value: ui.windowSearch,
+    oninput: (event: Event) => {
+      ui.windowSearch = (event.target as HTMLInputElement).value;
+      const list = document.querySelector('.window-table');
+      if (list) list.replaceWith(renderWindowRows());
+    },
+  });
+
+  return h(
+    'div',
+    { class: 'view' },
+    h(
+      'header',
+      { class: 'view-head' },
+      h('h1', { text: 'Windows' }),
+      h(
+        'div',
+        { class: 'row' },
+        toggle('Show everything', ui.showAllWindows, (value) => {
+          ui.showAllWindows = value;
+          render();
+        }),
+        button('Save diagnostics…', async () => {
+          const file = await api.saveDiagnostics();
+          notify(`Saved to ${file}`);
+        }),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'panel' },
+      h('p', { class: 'muted small', text: `${rows.length} of ${state.windows.length} windows. If a table of yours is in this list marked “—”, click “This is a table” on it: TableLab will build a matching rule from that window\u2019s process and class, which keeps working when the client renames its titles.` }),
+      searchInput,
+      renderWindowRows(),
+    ),
+  );
+}
+
+function renderWindowRows(): HTMLElement {
+  const state = ui.state!;
+  const search = ui.windowSearch.trim().toLowerCase();
+  const interesting = (win: (typeof state.windows)[number]) =>
+    !win.toolWindow && !win.cloaked && win.bounds.width >= 300 && win.bounds.height >= 200;
+
+  const rows = state.windows
+    .filter((win) => (ui.showAllWindows ? true : interesting(win) || win.kind !== 'other'))
+    .filter((win) =>
+      search.length === 0
+        ? true
+        : `${win.title} ${win.processName} ${win.className}`.toLowerCase().includes(search),
+    );
+
+  if (rows.length === 0) {
+    return h('div', { class: 'window-table empty', text: 'No windows match that filter.' });
+  }
+
+  const list = h('ul', { class: 'window-table' });
+  for (const win of rows) {
+    const flags = [
+      win.owned ? 'owned' : null,
+      win.toolWindow ? 'tool window' : null,
+      win.cloaked ? 'cloaked' : null,
+      win.minimized ? 'minimized' : null,
+      win.resizable ? null : 'fixed size',
+    ].filter(Boolean);
+
+    list.append(
+      h(
+        'li',
+        { class: `window-row is-${win.kind}` },
+        h('span', { class: `kind-badge is-${win.kind}`, text: KIND_LABEL[win.kind] ?? '—' }),
+        h(
+          'span',
+          { class: 'window-main' },
+          h('span', { class: 'window-title', text: win.title }),
+          h('span', {
+            class: 'window-meta',
+            text: [
+              win.processName || 'unknown.exe',
+              win.className,
+              `${Math.round(win.bounds.width)}×${Math.round(win.bounds.height)}`,
+              ...flags,
+            ].join(' · '),
+          }),
+          win.reason ? h('span', { class: 'window-reason', text: win.reason }) : null,
+          win.status ? h('span', { class: `window-status is-${win.status}`, text: statusText(win.status) }) : null,
+        ),
+        h(
+          'span',
+          { class: 'row' },
+          button('Focus', () => void api.focusTable(win.id)),
+          win.kind === 'table'
+            ? null
+            : button(
+                'This is a table',
+                async () => {
+                  ui.config = await api.learnWindow(win.id);
+                  notify('Rule added — TableLab will manage windows like this one');
+                },
+                'primary',
+              ),
+        ),
+      ),
+    );
+  }
+  return list;
+}
+
+function statusText(status: string): string {
+  if (status === 'placed') return 'placed';
+  if (status === 'moving') return 'moving…';
+  if (status === 'size-locked') return 'positioned (client keeps its own size)';
+  return 'would not move';
+}
+
 // --- sites -----------------------------------------------------------------
 
 function renderSitesView(): HTMLElement {
@@ -633,26 +813,48 @@ function renderSitesView(): HTMLElement {
     ),
   );
 
-  const unmatched = h(
+  const learned = config.profiles.filter((p) => p.learned);
+  const sidebar = h(
     'div',
     { class: 'panel' },
-    h('h2', { text: 'Windows we did not claim' }),
-    h('p', { class: 'muted small', text: 'If your tables are in here, copy the process or class into the matching profile above.' }),
-    h(
-      'ul',
-      { class: 'window-list' },
-      ...state.otherWindows.slice(0, 40).map((win) =>
-        h(
-          'li',
+    h('h2', { text: 'Not seeing your client?' }),
+    h('p', {
+      class: 'muted small',
+      text: 'Editing regexes by hand is the slow way. Open the Windows tab, find one of your table windows in the list, and click “This is a table” — the rule is built from that window\u2019s process and class, which survives the client renaming its titles.',
+    }),
+    button('Open the Windows tab', () => {
+      ui.tab = 'windows';
+      render();
+    }, 'primary'),
+    learned.length > 0
+      ? h(
+          'div',
           {},
-          h('span', { class: 'window-title', text: win.title }),
-          h('span', { class: 'window-meta', text: `${win.processName || 'unknown.exe'} · ${win.className}` }),
-        ),
-      ),
-    ),
+          h('h3', { text: 'Learned from your windows' }),
+          h(
+            'ul',
+            { class: 'window-list' },
+            ...learned.map((profile) =>
+              h(
+                'li',
+                {},
+                h('span', { class: 'window-title', text: profile.name }),
+                h('span', { class: 'window-meta', text: `${profile.processNames.join(', ') || 'any process'} · ${profile.classPatterns.join(', ') || 'any class'}` }),
+              ),
+            ),
+          ),
+        )
+      : null,
+    h('h3', { text: 'Windows nobody claimed' }),
+    h('p', { class: 'muted small', text: `${state.windows.filter((w) => w.kind === 'other').length} windows on screen match no profile.` }),
   );
 
-  return h('div', { class: 'view' }, h('header', { class: 'view-head' }, h('h1', { text: 'Sites' })), h('div', { class: 'split split-narrow' }, h('section', { class: 'panel' }, profiles), unmatched));
+  return h(
+    'div',
+    { class: 'view' },
+    h('header', { class: 'view-head' }, h('h1', { text: 'Sites' })),
+    h('div', { class: 'split split-narrow' }, h('section', { class: 'panel' }, profiles), sidebar),
+  );
 }
 
 function updateProfile(id: string, patch: Record<string, unknown>): void {

@@ -30,8 +30,8 @@ binaries as one package per platform.
 [the Windows workflow](../.github/workflows/tablelab-windows.yml) on a
 `windows-latest` runner: it typechecks, runs the tests against Windows Node, and
 builds both artifacts. Download them from the run's *Artifacts* section
-(`TableLab-windows-x64`) — `TableLab-Setup-0.1.0.exe` to install, or
-`TableLab-0.1.0-portable.exe` to run with no installation.
+(`TableLab-windows-x64`) — `TableLab-Setup-<version>.exe` to install, or
+`TableLab-<version>-portable.exe` to run with no installation.
 
 **Locally on Windows.** `npm run dist:win` produces the same two files in
 `release/`.
@@ -118,12 +118,40 @@ makes hotkey table-switching work while a client has focus.
 
 ## Your client is not recognised
 
-Open **Sites**. Every window TableLab did not claim is listed there with its
-process and window class; copy either into the matching profile, or build a new
-one. Profiles are plain regex data, editable live — when a client changes its
-window titles you fix a pattern, not the app. The built-in profiles for
-PokerStars, GGPoker, partypoker, 888, Winamax and the WPN skins are starting
-points, not guarantees.
+Open the **Windows** tab. It lists *every* top-level window on the desktop with
+its title, process, window class, size and flags, plus what TableLab decided
+about it and — when it decided nothing — why. Find one of your table windows,
+click **This is a table**, and a matching rule is built from that window's
+process and class.
+
+That is the reliable path. Predicting a client's window titles from the outside
+does not work: they differ by skin, by client version and by game type, and
+they get rewritten every hand. Keying on process and class does not.
+
+![The Windows tab](docs/windows.png)
+
+For finer control, **Sites** holds the same rules as editable regexes. The
+built-in profiles for PokerStars, GGPoker, CoinPoker, partypoker, 888, Winamax
+and the WPN skins are starting points, not guarantees.
+
+## When a table will not move
+
+Three things go wrong on real clients, and each one now says so rather than
+failing quietly:
+
+- **"would not move"** — the client accepted the request and ignored it. Almost
+  always it is running as administrator while TableLab is not; Windows will not
+  let a normal process reach into an elevated one's windows. Right-click
+  TableLab → *Run as administrator*.
+- **"positioned (client keeps its own size)"** — a fixed-size client. TableLab
+  detects this on the first move, stops asking for a resize it will never
+  perform, and centres the table in its slot instead.
+- **Nothing detected at all** — the banner names any process on screen that
+  looks like a poker client, and the Windows tab shows what it actually is.
+
+**Save diagnostics…** in the Windows tab writes a JSON dump — every window,
+every profile, the displays, the active layout and the placement results — and
+opens the folder. That file is what to attach to a bug report.
 
 ## Developing without Windows
 

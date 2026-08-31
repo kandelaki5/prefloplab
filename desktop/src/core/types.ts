@@ -44,6 +44,23 @@ export interface WindowInfo {
   bounds: Rect;
   minimized: boolean;
   visible: boolean;
+  pid: number;
+  /**
+   * Owned by another window of the same process (an "owner", not a parent).
+   *
+   * Do not use this to rule a window out. Plenty of clients — anything built
+   * on Electron or Qt, which is most of the modern ones — create their table
+   * windows owned by the main window, and dropping owned windows makes those
+   * tables invisible to the manager with nothing to show for it.
+   */
+  owned: boolean;
+  ownerId: string | null;
+  /** WS_EX_TOOLWINDOW: palettes and overlays, never a table. */
+  toolWindow: boolean;
+  /** Alive but not composited — UWP ghosts, minimized-to-tray windows. */
+  cloaked: boolean;
+  /** WS_THICKFRAME. A window without it will refuse to change size. */
+  resizable: boolean;
 }
 
 export type WindowKind = 'table' | 'lobby' | 'other';
@@ -53,6 +70,12 @@ export interface Classification {
   kind: WindowKind;
   /** Id of the site profile that matched, if any. */
   siteId: string | null;
+  /**
+   * Why this window is not being managed, in words, for the Windows tab.
+   * Silent non-matching is the single hardest thing to debug in a tool like
+   * this, so every rejection carries its reason.
+   */
+  reason?: string;
   /**
    * Stable identity of the *game* behind the window. Poker clients rename
    * their table windows constantly (stack sizes, blind levels, "action on
@@ -131,4 +154,12 @@ export interface SiteProfile {
   tableKeyPattern?: string | null;
   /** Native table aspect ratio, used by the layout's aspect lock. */
   aspectRatio?: number | null;
+  /**
+   * Client refuses to be resized (fixed-size tables), so TableLab only moves
+   * its windows and centres them in the slot. Detected automatically when a
+   * resize does not take, and remembered here.
+   */
+  positionOnly?: boolean;
+  /** Set when the profile was generated from a window by "Mark as table". */
+  learned?: boolean;
 }

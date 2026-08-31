@@ -92,6 +92,16 @@ export function fitAspect(slot: Rect, aspect: number): Rect {
   });
 }
 
+/** Put a window of a fixed size in the middle of a slot. */
+export function centerIn(slot: Rect, size: { width: number; height: number }): Rect {
+  return round({
+    x: slot.x + (slot.width - size.width) / 2,
+    y: slot.y + (slot.height - size.height) / 2,
+    width: size.width,
+    height: size.height,
+  });
+}
+
 /** Push a rect back inside `bounds`, shrinking it only if it is too big. */
 export function clampInto(r: Rect, bounds: Rect): Rect {
   const width = Math.min(r.width, bounds.width);

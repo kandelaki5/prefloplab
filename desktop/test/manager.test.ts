@@ -186,3 +186,91 @@ test('auto-arrange off means new tables are left alone', () => {
   manager.arrangeNow(true);
   assert.notDeepEqual(backend.listWindows().find((w) => w.id === table.id)!.bounds, original);
 });
+
+// --- what happens when a client does not cooperate ---------------------------
+
+test('a fixed-size client is positioned, not resized', () => {
+  const { backend, manager, state } = harness();
+  const table = backend.spawnTable('pokerstars', true);
+  const originalSize = { width: table.bounds.width, height: table.bounds.height };
+  manager.scan();
+
+  const view = state().tables.find((t) => t.id === table.id)!;
+  assert.equal(view.status, 'size-locked');
+  assert.match(view.statusDetail ?? '', /keeps its own table size/i);
+
+  const placed = backend.listWindows().find((w) => w.id === table.id)!;
+  assert.equal(placed.bounds.width, originalSize.width, 'its size was left alone');
+
+  // ...and it sits in the middle of the slot it was given.
+  const slot = manager.activeLayout()!.slots.find((s) => s.id === view.slotId)!;
+  assert.equal(
+    Math.round(placed.bounds.x + placed.bounds.width / 2),
+    Math.round(slot.rect.x + slot.rect.width / 2),
+  );
+});
+
+/** A client that says yes to every move and then does nothing — an elevated one. */
+class StubbornBackend extends MockBackend {
+  override setWindowBounds(): { ok: boolean } {
+    return { ok: true };
+  }
+}
+
+test('a client that ignores moves is reported instead of retried forever', () => {
+  const backend = new StubbornBackend(displays);
+  backend.closeAll();
+  const store = new ConfigStore(join(mkdtempSync(join(tmpdir(), 'tablelab-')), 'config.json'), displays);
+  let last: ManagerState | null = null;
+  const manager = new TableManager(backend, store, { onState: (s) => (last = s) });
+
+  const table = backend.spawnTable('pokerstars');
+  for (let i = 0; i < 6; i += 1) manager.scan();
+
+  const view = (last as unknown as ManagerState).tables.find((t) => t.id === table.id)!;
+  assert.equal(view.status, 'stuck');
+  assert.match(view.statusDetail ?? '', /administrator/i);
+  assert.ok(
+    (last as unknown as ManagerState).issues.some((issue) => /would not move/i.test(issue)),
+    'the failure is surfaced as an issue, not buried',
+  );
+});
+
+test('an arrange gives a stuck table another chance', () => {
+  const backend = new StubbornBackend(displays);
+  backend.closeAll();
+  const store = new ConfigStore(join(mkdtempSync(join(tmpdir(), 'tablelab-')), 'config.json'), displays);
+  let last: ManagerState | null = null;
+  const manager = new TableManager(backend, store, { onState: (s) => (last = s) });
+
+  backend.spawnTable('pokerstars');
+  for (let i = 0; i < 6; i += 1) manager.scan();
+  assert.equal((last as unknown as ManagerState).tables[0]!.status, 'stuck');
+
+  manager.arrangeNow(true);
+  assert.notEqual((last as unknown as ManagerState).tables[0]!.status, 'stuck');
+});
+
+test('unmanaged windows are reported with the reason they were skipped', () => {
+  const { backend, manager, state } = harness();
+  backend.spawnLobby('pokerstars');
+  manager.scan();
+
+  const lobby = state().windows.find((w) => /lobby/i.test(w.title))!;
+  assert.equal(lobby.kind, 'lobby');
+
+  // Nothing is hidden from this list — that is the point of it.
+  assert.equal(state().windows.length, backend.listWindows().length);
+});
+
+test('the diagnostics dump carries what a bug report needs', () => {
+  const { backend, manager } = harness();
+  backend.spawnTable('ggpoker');
+  manager.scan();
+
+  const dump = manager.snapshotForDiagnostics();
+  for (const key of ['platform', 'backend', 'displays', 'profiles', 'tables', 'windows', 'activeLayout']) {
+    assert.ok(key in dump, `diagnostics is missing "${key}"`);
+  }
+  assert.ok((dump.windows as unknown[]).length > 0);
+});

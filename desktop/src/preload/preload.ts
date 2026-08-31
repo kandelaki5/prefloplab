@@ -25,6 +25,9 @@ const api: Api = {
   releaseTable: (windowId: string) => ipcRenderer.invoke(IPC.releaseTable, windowId),
   rotateTables: (direction: 1 | -1) => ipcRenderer.invoke(IPC.rotateTables, direction),
 
+  learnWindow: (windowId: string) => ipcRenderer.invoke(IPC.learnWindow, windowId),
+  saveDiagnostics: () => ipcRenderer.invoke(IPC.saveDiagnostics),
+
   mock: (action, siteId?: string) => ipcRenderer.invoke(IPC.mock, action, siteId),
 
   onState: (listener: (state: ManagerState) => void) => {

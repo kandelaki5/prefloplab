@@ -1,4 +1,12 @@
-import type { AssignmentMap, DisplayInfo, Layout, Rect, SiteProfile, WindowInfo } from '../core/types';
+import type {
+  AssignmentMap,
+  DisplayInfo,
+  Layout,
+  Rect,
+  SiteProfile,
+  WindowInfo,
+  WindowKind,
+} from '../core/types';
 import type { FillStrategy } from '../core/assignment';
 
 export type HotkeyAction =
@@ -44,6 +52,18 @@ export interface AppConfig {
   startMinimized: boolean;
 }
 
+/** How the last attempt to place a window went. */
+export type PlacementStatus = 'moving' | 'placed' | 'size-locked' | 'stuck';
+
+/** Every window on the desktop, with the verdict and the reasoning. */
+export interface InspectedWindow extends WindowInfo {
+  kind: WindowKind;
+  siteId: string | null;
+  /** Why it is not being managed, when it is not. */
+  reason: string | null;
+  status: PlacementStatus | null;
+}
+
 export interface TableView {
   id: string;
   title: string;
@@ -56,6 +76,9 @@ export interface TableView {
   minimized: boolean;
   placed: boolean;
   firstSeen: number;
+  status: PlacementStatus | null;
+  /** Plain-language note when a table would not go where it was asked. */
+  statusDetail: string | null;
 }
 
 export interface ManagerState {
@@ -69,10 +92,14 @@ export interface ManagerState {
   displays: DisplayInfo[];
   tables: TableView[];
   lobbies: { id: string; title: string; siteId: string | null }[];
-  otherWindows: WindowInfo[];
+  /** Every top-level window, managed or not, for the Windows tab. */
+  windows: InspectedWindow[];
   assignments: AssignmentMap;
   lastScanAt: number;
   lastError: string | null;
+  /** Problems worth putting in front of the user right now. */
+  issues: string[];
+  environment: { elevated: boolean; note?: string };
 }
 
 export interface HotkeyStatus {
@@ -101,8 +128,13 @@ export interface Api {
   releaseTable(windowId: string): Promise<void>;
   rotateTables(direction: 1 | -1): Promise<void>;
 
+  /** Turn a window the user pointed at into a site profile. */
+  learnWindow(windowId: string): Promise<AppConfig>;
+  /** Write a full window dump to disk; returns the file path. */
+  saveDiagnostics(): Promise<string>;
+
   /** Simulator (mock backend only). */
-  mock(action: 'spawnTable' | 'closeAll' | 'churn' | 'spawnLobby', siteId?: string): Promise<void>;
+  mock(action: 'spawnTable' | 'closeAll' | 'churn' | 'spawnLobby' | 'spawnFixedTable', siteId?: string): Promise<void>;
 
   onState(listener: (state: ManagerState) => void): () => void;
 }
@@ -138,6 +170,8 @@ export const IPC = {
   assignTableToSlot: 'manager:assign',
   releaseTable: 'manager:release',
   rotateTables: 'manager:rotate',
+  learnWindow: 'window:learn',
+  saveDiagnostics: 'diagnostics:save',
   mock: 'mock:action',
   stateEvent: 'state:changed',
 } as const;

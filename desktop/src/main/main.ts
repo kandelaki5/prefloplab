@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron';
 import { existsSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { autoGridSlots, cascadeSlots, gridSlots, reindex, stackSlots } from '../core/layout';
 import { fitAspect } from '../core/geometry';
+import { profileFromWindow } from '../core/matching';
 import type { DisplayInfo, Layout } from '../core/types';
 import type { AppConfig, BuildLayoutRequest, ManagerState } from '../shared/ipc';
 import { IPC } from '../shared/ipc';
@@ -242,10 +244,35 @@ function registerIpc(): void {
   ipcMain.handle(IPC.releaseTable, (_event, windowId: string) => manager.releaseTable(windowId));
   ipcMain.handle(IPC.rotateTables, (_event, direction: 1 | -1) => manager.rotateTables(direction));
 
+  ipcMain.handle(IPC.learnWindow, (_event, windowId: string) => {
+    const window = manager.getState().windows.find((w) => w.id === windowId);
+    if (!window) throw new Error('That window has closed.');
+
+    const profile = profileFromWindow(window);
+    const config = store.get();
+    // Replace a profile we learned before from the same client rather than
+    // stacking near-identical ones up.
+    const profiles = config.profiles.some((p) => p.id === profile.id)
+      ? config.profiles.map((p) => (p.id === profile.id ? profile : p))
+      : [...config.profiles, profile];
+    const next = store.update({ profiles });
+    manager.reset();
+    manager.scan({ force: true });
+    return next;
+  });
+
+  ipcMain.handle(IPC.saveDiagnostics, async () => {
+    const file = join(app.getPath('userData'), `tablelab-diagnostics-${Date.now()}.json`);
+    await writeFile(file, JSON.stringify(manager.snapshotForDiagnostics(), null, 2), 'utf8');
+    shell.showItemInFolder(file);
+    return file;
+  });
+
   ipcMain.handle(IPC.mock, (_event, action: string, siteId?: string) => {
     const backend = manager.getBackend();
     if (!(backend instanceof MockBackend)) return;
     if (action === 'spawnTable') backend.spawnTable(siteId);
+    else if (action === 'spawnFixedTable') backend.spawnTable(siteId, true);
     else if (action === 'spawnLobby') backend.spawnLobby(siteId ?? 'pokerstars');
     else if (action === 'closeAll') backend.closeAllTables();
     else if (action === 'churn') backend.churnTitles();

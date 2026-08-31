@@ -8,7 +8,7 @@
  * setups.
  */
 import type { DisplayInfo, Rect, WindowInfo } from '../../core/types';
-import type { DesktopBackend, SetBoundsOptions } from './types';
+import type { DesktopBackend, MoveResult, SetBoundsOptions } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Koffi = any;
@@ -16,7 +16,7 @@ type Koffi = any;
 // SetWindowPos flags
 const SWP_NOZORDER = 0x0004;
 const SWP_NOACTIVATE = 0x0010;
-const SWP_ASYNCWINDOWPOS = 0x4000;
+const SWP_NOSIZE = 0x0001;
 
 // ShowWindow commands
 const SW_RESTORE = 9;
@@ -28,6 +28,7 @@ const GWL_EXSTYLE = -20;
 
 const WS_VISIBLE = 0x10000000;
 const WS_CHILD = 0x40000000;
+const WS_THICKFRAME = 0x00040000;
 const WS_EX_TOOLWINDOW = 0x00000080;
 const WS_EX_NOACTIVATE = 0x08000000;
 
@@ -63,6 +64,28 @@ function decodeWide(buffer: Uint16Array, length?: number): string {
   return out;
 }
 
+/**
+ * Turn a Win32 error code into something a poker player can act on.
+ *
+ * "Access is denied" on SetWindowPos almost always means the client is running
+ * elevated and TableLab is not: Windows will not let a normal process reach
+ * into an elevated one's windows.
+ */
+export function describeWin32Error(code: number): string {
+  switch (code) {
+    case 0:
+      return 'the window refused the move without reporting an error';
+    case 5:
+      return 'access denied — the poker client is probably running as administrator, so run TableLab as administrator too';
+    case 1400:
+      return 'invalid window handle — the table closed while it was being moved';
+    case 1408:
+      return 'the window belongs to another desktop session';
+    default:
+      return `Windows error ${code}`;
+  }
+}
+
 export class Win32Backend implements DesktopBackend {
   readonly id = 'win32';
   available = false;
@@ -94,6 +117,7 @@ export class Win32Backend implements DesktopBackend {
     const user32 = koffi.load('user32.dll');
     const kernel32 = koffi.load('kernel32.dll');
     const dwmapi = koffi.load('dwmapi.dll');
+    const shell32 = koffi.load('shell32.dll');
 
     koffi.struct('RECT', { left: 'long', top: 'long', right: 'long', bottom: 'long' });
     koffi.struct('MONITORINFOEXW', {
@@ -138,9 +162,11 @@ export class Win32Backend implements DesktopBackend {
       QueryFullProcessImageNameW: kernel32.func(
         'bool __stdcall QueryFullProcessImageNameW(intptr_t proc, uint32 flags, _Out_ uint16_t *buf, _Inout_ uint32 *size)',
       ),
+      GetLastError: kernel32.func('uint32 __stdcall GetLastError()'),
       DwmGetWindowAttribute: dwmapi.func(
         'long __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32 attr, _Out_ void *value, uint32 size)',
       ),
+      IsUserAnAdmin: shell32.func('bool __stdcall IsUserAnAdmin()'),
     };
   }
 
@@ -263,10 +289,6 @@ export class Win32Backend implements DesktopBackend {
         const style = Number(this.fn.GetWindowLongPtrW(hwnd, GWL_STYLE));
         if ((style & WS_CHILD) !== 0 || (style & WS_VISIBLE) === 0) return true;
 
-        const exStyle = Number(this.fn.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-        if ((exStyle & WS_EX_TOOLWINDOW) !== 0 || (exStyle & WS_EX_NOACTIVATE) !== 0) return true;
-        if (this.isCloaked(hwnd)) return true;
-
         const titleLen = this.fn.GetWindowTextW(hwnd, titleBuf, titleBuf.length);
         if (titleLen <= 0) return true;
         const title = decodeWide(titleBuf, titleLen);
@@ -278,17 +300,31 @@ export class Win32Backend implements DesktopBackend {
         if (!this.fn.GetWindowRect(hwnd, raw)) return true;
         const outer = toRect(raw);
         const minimized = Boolean(this.fn.IsIconic(hwnd));
+        const exStyle = Number(this.fn.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+        const owner = this.fn.GetWindow(hwnd, GW_OWNER);
+        const pidOut = [0];
+        this.fn.GetWindowThreadProcessId(hwnd, pidOut);
 
+        // Nothing is filtered out here on purpose. Tool windows, cloaked
+        // windows and owned windows are all reported with a flag and rejected
+        // later, by name, so the Windows tab can show what exists and why it
+        // is not being managed.
         windows.push({
           id: String(hwnd),
           title,
           processName: this.processName(hwnd),
           className,
-          // A minimized window's rect is nonsense (-32000); report it as-is but
-          // flagged, and let the manager skip placing it until it is restored.
+          // A minimized window's rect is nonsense (-32000); report it as-is
+          // but flagged, and let the manager skip placing it until restored.
           bounds: minimized ? outer : this.visibleRect(hwnd, outer),
           minimized,
           visible: true,
+          pid: pidOut[0] ?? 0,
+          owned: owner !== 0,
+          ownerId: owner !== 0 ? String(owner) : null,
+          toolWindow: (exStyle & WS_EX_TOOLWINDOW) !== 0 || (exStyle & WS_EX_NOACTIVATE) !== 0,
+          cloaked: this.isCloaked(hwnd),
+          resizable: (style & WS_THICKFRAME) !== 0,
         });
       } catch {
         // One bad window must not abort the whole enumeration.
@@ -302,14 +338,13 @@ export class Win32Backend implements DesktopBackend {
       this.koffi.unregister(proc);
     }
 
-    // Owned windows (dialogs, chat popups) are dropped: they follow their owner.
-    return windows.filter((w) => this.fn.GetWindow(this.hwnd(w.id), GW_OWNER) === 0);
+    return windows;
   }
 
-  setWindowBounds(id: string, target: Rect, options: SetBoundsOptions = {}): boolean {
-    if (!this.available) return false;
+  setWindowBounds(id: string, target: Rect, options: SetBoundsOptions = {}): MoveResult {
+    if (!this.available) return { ok: false, message: this.reason };
     const hwnd = this.hwnd(id);
-    if (!this.fn.IsWindow(hwnd)) return false;
+    if (!this.fn.IsWindow(hwnd)) return { ok: false, message: 'the window no longer exists' };
     if (options.restore !== false && this.fn.IsIconic(hwnd)) {
       this.fn.ShowWindow(hwnd, SW_RESTORE);
     }
@@ -321,9 +356,18 @@ export class Win32Backend implements DesktopBackend {
     const cx = Math.round(target.width + pad.left + pad.right);
     const cy = Math.round(target.height + pad.top + pad.bottom);
 
-    let flags = SWP_NOZORDER | SWP_ASYNCWINDOWPOS;
+    // Deliberately synchronous: SWP_ASYNCWINDOWPOS would return before the
+    // client has had a chance to accept or correct the request, and reading the
+    // result back is the only honest way to know what happened.
+    let flags = SWP_NOZORDER;
     if (!options.activate) flags |= SWP_NOACTIVATE;
-    return Boolean(this.fn.SetWindowPos(hwnd, 0, x, y, cx, cy, flags));
+    if (options.moveOnly) flags |= SWP_NOSIZE;
+
+    const ok = Boolean(this.fn.SetWindowPos(hwnd, 0, x, y, cx, cy, flags));
+    if (ok) return { ok: true };
+
+    const code = Number(this.fn.GetLastError());
+    return { ok: false, errorCode: code, message: describeWin32Error(code) };
   }
 
   /**
@@ -334,6 +378,16 @@ export class Win32Backend implements DesktopBackend {
    * thread for the duration of the call is the long-standing way around it, and
    * is exactly what table managers do to make hotkey table-switching work.
    */
+  getWindowBounds(id: string): Rect | null {
+    if (!this.available) return null;
+    const hwnd = this.hwnd(id);
+    if (!this.fn.IsWindow(hwnd)) return null;
+    const raw: Win32Rect = {} as Win32Rect;
+    if (!this.fn.GetWindowRect(hwnd, raw)) return null;
+    const outer = toRect(raw);
+    return this.fn.IsIconic(hwnd) ? outer : this.visibleRect(hwnd, outer);
+  }
+
   focusWindow(id: string): boolean {
     if (!this.available) return false;
     const hwnd = this.hwnd(id);
@@ -376,6 +430,15 @@ export class Win32Backend implements DesktopBackend {
     if (!this.available) return null;
     const hwnd = this.fn.GetForegroundWindow();
     return hwnd ? String(hwnd) : null;
+  }
+
+  environment(): { elevated: boolean; note?: string } {
+    if (!this.available) return { elevated: false, note: this.reason };
+    try {
+      return { elevated: Boolean(this.fn.IsUserAnAdmin()) };
+    } catch {
+      return { elevated: false };
+    }
   }
 
   dispose(): void {
