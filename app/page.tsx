@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
+
+import { useMemo, useState } from "react";
 import {
-  ALL_HANDS, HAND_GRID, POSITIONS, VS_OPENERS, VS3BET_OPENERS,
+  ALL_HANDS, POSITIONS, VS_OPENERS, VS3BET_OPENERS,
   comboCount, isMixed, raiseSixths, resolveAction,
   isVsOpenMixed, vsOpenSixths, resolveVsOpenAction, heroesFacing,
   isVs3betMixed, vs3betSixths, resolveVs3betAction, threebettorsFor, sampleOpenedHand,
@@ -11,6 +13,7 @@ import {
 import { PlayingCard } from "@/components/PlayingCard";
 import { Table6Max } from "@/components/Table6Max";
 import { Logo } from "@/components/Logo";
+import { RangeGrid, RangeLegend } from "@/components/RangeGrid";
 import { Dice } from "@/components/Dice";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
@@ -90,21 +93,6 @@ function randomScenario(mode: Mode): Scenario {
 
   const hero = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
   return { kind: "rfi", hero };
-}
-
-const RAISE_COLOR = "#b6472b";
-const CALL_COLOR = "#3f8a4c";
-const FOLD_COLOR = "#2a3742";
-const NA_COLOR = "#2b2b2b";
-
-/** Grid cell fill: a solid color for pure hands, a proportional 3-way
- *  split for mixed ones (raise | call | fold, left to right). */
-function cellStyle(raise: number, call: number): CSSProperties {
-  const raisePct = (raise / 6) * 100;
-  const callEndPct = ((raise + call) / 6) * 100;
-  return {
-    backgroundImage: `linear-gradient(to right, ${RAISE_COLOR} ${raisePct}%, ${CALL_COLOR} ${raisePct}%, ${CALL_COLOR} ${callEndPct}%, ${FOLD_COLOR} ${callEndPct}%)`,
-  };
 }
 
 /* =========================
@@ -228,6 +216,13 @@ export default function TrainerPage() {
             </button>
           ))}
         </div>
+
+        <Link
+          href="/range"
+          className="mt-8 text-sm text-gray-500 underline underline-offset-4 hover:text-[#d3ac47]"
+        >
+          Or browse all 35 ranges as charts
+        </Link>
       </main>
     );
   }
@@ -250,9 +245,14 @@ export default function TrainerPage() {
         <Logo className="w-10 h-10 sm:w-14 sm:h-14" />
         <h1 className="text-3xl sm:text-5xl font-bold">Preflop Solver</h1>
       </div>
-      <button onClick={backToMenu} className="text-xs text-gray-500 hover:text-[#d3ac47] mb-6 underline underline-offset-2">
-        {MODES.find((m) => m.mode === mode)?.label} — change mode
-      </button>
+      <div className="mb-6 flex items-center gap-3 text-xs text-gray-500">
+        <button onClick={backToMenu} className="hover:text-[#d3ac47] underline underline-offset-2">
+          {MODES.find((m) => m.mode === mode)?.label} — change mode
+        </button>
+        <Link href="/range" className="hover:text-[#d3ac47] underline underline-offset-2">
+          all ranges
+        </Link>
+      </div>
 
       {/* TABLE — the die sits on the felt, where a real one would be. */}
       <div className="flex w-full items-center justify-center mb-6 sm:mb-4">
@@ -334,56 +334,11 @@ export default function TrainerPage() {
             {scenario.kind === "vs3bet" && `${scenario.hero} vs ${scenario.threebettor} 3-bet`}
             {scenario.kind === "rfi" && `${scenario.hero} Opening Range`}
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1">
-              <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: RAISE_COLOR }} />
-              Raise
-            </span>
-            {scenario.kind !== "rfi" && (
-              <span className="flex items-center gap-1">
-                <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CALL_COLOR }} />
-                Call
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: FOLD_COLOR }} />
-              Fold
-            </span>
-            {scenario.kind === "vs3bet" && (
-              <span className="flex items-center gap-1">
-                <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: NA_COLOR }} />
-                Never opened
-              </span>
-            )}
-          </div>
+          <RangeLegend call={scenario.kind !== "rfi"} na={scenario.kind === "vs3bet"} />
         </div>
 
         {last ? (
-          <div className="grid grid-cols-13 gap-px sm:gap-[2px] w-full">
-            {HAND_GRID.flat().map((h) => {
-              const sixths = sixthsFor(h);
-              if (!sixths) {
-                return (
-                  <div
-                    key={h}
-                    className="aspect-square rounded-[2px] sm:rounded flex items-center justify-center text-[7px] sm:text-[9px] leading-none text-zinc-600 font-medium"
-                    style={{ background: NA_COLOR }}
-                  >
-                    {h}
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={h}
-                  className="aspect-square rounded-[2px] sm:rounded flex items-center justify-center text-[7px] sm:text-[9px] leading-none text-[#f5ede0] font-medium"
-                  style={cellStyle(sixths.raise, sixths.call)}
-                >
-                  {h}
-                </div>
-              );
-            })}
-          </div>
+          <RangeGrid sixths={sixthsFor} />
         ) : (
           <div className="w-full h-[130px] flex items-center justify-center rounded-lg border border-dashed border-zinc-700 text-xs text-gray-500">
             Act to reveal
