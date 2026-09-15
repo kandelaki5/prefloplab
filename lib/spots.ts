@@ -1,8 +1,10 @@
 import {
-  POSITIONS, VS_OPENERS, VS3BET_OPENERS,
+  POSITIONS, SEATS, VS_OPENERS, VS3BET_OPENERS,
   heroesFacing, threebettorsFor,
+  isMixed, isVsOpenMixed, isVs3betMixed,
   raiseSixths, vsOpenSixths, vs3betSixths,
-  type AnySeat, type Facing, type Position,
+  resolveAction, resolveVsOpenAction, resolveVs3betAction,
+  type AnySeat, type Facing, type FacingAction, type Position,
 } from "@/lib/ranges";
 
 /** One drillable situation. The trainer deals these at random; the /range
@@ -78,4 +80,84 @@ export function spotSixths(s: Spot, hand: string): Facing | null {
   if (s.kind === "rfi") return { raise: raiseSixths(s.hero, hand), call: 0 };
   if (s.kind === "vs") return vsOpenSixths(s.hero, s.opener, hand);
   return vs3betSixths(s.hero, s.threebettor, hand);
+}
+
+/** What the die says to do with this hand here. */
+export function spotResolve(s: Spot, hand: string, die: number): FacingAction {
+  if (s.kind === "rfi") return resolveAction(s.hero, hand, die);
+  if (s.kind === "vs") return resolveVsOpenAction(s.hero, s.opener, hand, die);
+  return resolveVs3betAction(s.hero, s.threebettor, hand, die);
+}
+
+/** True when the chart splits this hand between actions, so the die decides. */
+export function spotIsMixed(s: Spot, hand: string): boolean {
+  if (s.kind === "rfi") return isMixed(s.hero, hand);
+  if (s.kind === "vs") return isVsOpenMixed(s.hero, s.opener, hand);
+  return isVs3betMixed(s.hero, s.threebettor, hand);
+}
+
+/** Compact one-line description for feedback lines and mistake lists. */
+export function spotLabel(s: Spot): string {
+  if (s.kind === "rfi") return s.hero;
+  if (s.kind === "vs") return `${s.opener} raise → ${s.hero}`;
+  return `${s.hero} opens, ${s.threebettor} 3-bets`;
+}
+
+/* =========================
+   PICKING A SPOT
+   Everything below is derived from SPOTS, so the picker can only ever
+   offer combinations we actually hold a chart for.
+========================= */
+
+export type SpotKind = Spot["kind"];
+
+/** The seat hero is up against, or null in an unopened pot. */
+export function spotBot(s: Spot): AnySeat | null {
+  if (s.kind === "rfi") return null;
+  return s.kind === "vs" ? s.opener : s.threebettor;
+}
+
+/** Seats hero can sit in for this kind of spot, in table order. */
+export function heroesForKind(kind: SpotKind): AnySeat[] {
+  const heroes = new Set(SPOTS.filter((s) => s.kind === kind).map((s) => s.hero as AnySeat));
+  return SEATS.filter((seat) => heroes.has(seat));
+}
+
+/** Opponent seats available once hero's seat is fixed, in table order. */
+export function botsForHero(kind: SpotKind, hero: AnySeat): AnySeat[] {
+  const bots = new Set(
+    SPOTS.filter((s) => s.kind === kind && s.hero === hero)
+      .map(spotBot)
+      .filter((b): b is AnySeat => b !== null)
+  );
+  return SEATS.filter((seat) => bots.has(seat));
+}
+
+/** Any seat, i.e. "deal me a different opponent every hand". */
+export const ANY_SEAT = "any" as const;
+
+/** The spots a picked selection draws from: one when the opponent's seat is
+ *  fixed, all of hero's opponents when it is `ANY_SEAT`. */
+export function spotPool(
+  kind: SpotKind,
+  hero: AnySeat,
+  bot: AnySeat | typeof ANY_SEAT | null
+): Spot[] {
+  return SPOTS.filter(
+    (s) =>
+      s.kind === kind &&
+      s.hero === hero &&
+      (kind === "rfi" || bot === ANY_SEAT || spotBot(s) === bot)
+  );
+}
+
+/** Heading for a whole selection, which may cover several spots. */
+export function poolHeading(
+  kind: SpotKind,
+  hero: AnySeat,
+  bot: AnySeat | typeof ANY_SEAT | null
+): string {
+  if (kind === "rfi") return `${hero} opening range`;
+  const who = bot === ANY_SEAT ? "any seat" : bot;
+  return kind === "vs" ? `${hero} vs ${who} raise` : `${hero} vs ${who} 3-bet`;
 }

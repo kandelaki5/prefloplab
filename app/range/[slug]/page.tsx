@@ -151,7 +151,7 @@ export default async function RangePage({ params }: { params: Promise<{ slug: st
         </section>
 
         <Link
-          href="/"
+          href={`/?spot=${slug}`}
           className="inline-block rounded-xl bg-[#d3ac47] px-6 py-3 font-semibold text-[#221703]"
         >
           Drill this in the trainer
